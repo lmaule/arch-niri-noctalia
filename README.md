@@ -23,7 +23,7 @@
 - **Noctalia login screen** (greetd), and your login password unlocks GNOME Keyring.
 - **Matching colours everywhere:** GTK, Qt, kitty and btop follow Noctalia's theme.
 - **AMD RX 9000 ready:** Mesa/RADV, firmware, 32-bit drivers and LACT, detected automatically.
-- **Apps and gaming:** Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop, MangoHud, Faugus Launcher, VM Curator.
+- **Apps and gaming:** Helium, Steam, Discord, Spotify, Zed, qBittorrent, ProtonPlus, Claude Desktop, MangoHud, Faugus Launcher, VM Curator.
 - **A friendly installer:** questions up front, one password prompt, a progress screen, retry/skip on errors, and a full log.
 
 ## Quick start
@@ -72,7 +72,7 @@ After rebooting, choose the **niri** session at the Noctalia login screen.
 | Files | `nautilus`, `xdg-user-dirs`, `gvfs` (phones, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, `ffmpegthumbnailer` |
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
 | Theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct`, `capitaine-cursors`, `dconf` |
-| Apps | Helium¹, Steam, Discord, Spotify¹, ProtonPlus¹, Claude Desktop¹ |
+| Apps | Helium¹, Steam, Discord, Spotify¹, ProtonPlus¹, Claude Desktop¹, `qbittorrent`, `zed` |
 | Gaming & VMs | `mangohud`, `goverlay`, Faugus Launcher¹, VM Curator¹ (+ `edk2-ovmf` and `swtpm` for UEFI / Windows 11 VMs) |
 
 ¹ From the AUR (`helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
@@ -113,6 +113,7 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 | `Mod+Shift+S` | Noctalia settings | | `Alt+Tab` | Window switcher |
 | `Mod+Alt+L` | Lock screen | | `Ctrl+Shift+1/2/3` | Screenshot: region / screen / window |
 | `Mod+Shift+Q` | Session menu | | `Mod+←→↑↓` | Move focus |
+| `Mod+Shift+E` | Text editor (Zed) | | | |
 
 <details>
 <summary><b>All keybinds</b></summary>
@@ -123,6 +124,7 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 | `Mod+Return` | kitty |
 | `Mod+B` | Helium |
 | `Mod+E` | Nautilus |
+| `Mod+Shift+E` | Zed |
 | **Noctalia** | |
 | `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
 | `Mod+S` | Control center |
@@ -239,7 +241,7 @@ A container can't boot or test the login screen and GPU, so the first install on
 
 The niri config layout, keybinds, animations, rules and dconf defaults are based on
 [cachyos/cachyos-niri-noctalia](https://github.com/cachyos/cachyos-niri-noctalia) (GPL-3.0), with changes:
-kitty and Helium binds, Noctalia's documented binds, qt5ct/qt6ct theming, blur in its own file, and Noctalia
+kitty, Helium and Zed binds, Noctalia's documented binds, qt5ct/qt6ct theming, blur in its own file, and Noctalia
 colour templates. Blur and keybind recommendations also come from [Noctalia's docs](https://github.com/noctalia-dev/noctalia).
 
 ## License

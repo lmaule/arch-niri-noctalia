@@ -602,6 +602,10 @@ step_apps() {
   # Claude Desktop: the AUR package repackages Anthropic's official Linux build
   # (downloaded from downloads.claude.ai); the AUR packaging itself is community-run.
   install_one_of "Claude Desktop" claude-desktop || true
+
+  # qBittorrent (torrent client) and Zed (code editor; its command is `zeditor`).
+  install_one_of "qBittorrent" qbittorrent || true
+  install_one_of "Zed" zed || true
 }
 
 # Gaming tools and VMs. Optional like the apps above: failures are reported in
@@ -807,7 +811,7 @@ STEP_TITLE=(
   "Fonts"
   "Nautilus, phones and network shares"
   "Helium browser"
-  "Steam, Discord, Spotify, ProtonPlus, Claude"
+  "Apps (Steam, Discord, Spotify, Zed, ...)"
   "MangoHud, GOverlay, Faugus, VM Curator"
   "GNOME Keyring"
   "Noctalia shell"
@@ -1012,7 +1016,7 @@ else
   printf '   %s%s No AMD GPU found, so the AMD driver step will be skipped (use --amd-gpu to force it).%s\n' "$MUT" "$SYM_DOT" "$RST"
 fi
 printf '   %s%s%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
-printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop, qBittorrent, Zed\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s your niri + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$SYM_DOT" "$RST"
 

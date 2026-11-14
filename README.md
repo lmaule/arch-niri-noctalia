@@ -43,21 +43,21 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | Fonts | `noto-fonts`, `noto-fonts-cjk`, `noto-fonts-emoji`, `ttf-jetbrains-mono-nerd`, Nerd Font symbols |
 | Files | `nautilus`, `xdg-user-dirs`, `gvfs` (MTP, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, `ffmpegthumbnailer` |
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
-| GTK & Qt theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct` |
+| GTK & Qt theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct`, `capitaine-cursors`, `dconf` |
 | Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify`, AUR), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
 
 If no AUR helper is installed, the script installs `paru` first.
 
 ## What it configures
 
-- **niri** (`~/.config/niri/config.kdl`, created from niri's default config if missing):
-  - Starts Noctalia at login and stops starting waybar.
-  - Adds Noctalia's recommended window rules and blur settings.
-  - Makes kitty the terminal (`Mod+T`).
-  - Adds Noctalia's keybinds, commenting out any default binds that use the same keys.
-- **Noctalia:** turns on its built-in polkit agent, so apps that need admin rights can show a password prompt (`~/.config/noctalia/polkit.toml`).
+- **niri:** installs the split config from `config/niri/` (layout and keybinds from CachyOS, see below).
+  If you already have a different `~/.config/niri`, it's moved to `~/.config/niri.bak.<timestamp>` first.
+  On niri older than 26.04, or with `--no-blur`, the blur file is switched off.
+- **Noctalia:** installs `config/noctalia/config.toml`, which turns on Noctalia's polkit agent and its GTK/Qt colour templates.
+  Other files in `~/.config/noctalia/` are left alone.
+- **GTK defaults:** dark `adw-gtk3` and the capitaine cursor theme are set system-wide through dconf (`etc/dconf/`).
 - **App theming:** GTK apps use `adw-gtk3` and Qt apps use qt5ct/qt6ct (`QT_QPA_PLATFORMTHEME=qt5ct` in niri, which covers both).
-  Noctalia's `gtk3`, `gtk4` and `qt` templates are switched on, so apps follow Noctalia's colours (`~/.config/noctalia/theming.toml`).
+  Noctalia's `gtk3`, `gtk4` and `qt` colour templates are switched on, so apps follow Noctalia's colours.
 - **Login:** greetd runs the Noctalia greeter, and any previous display manager is disabled.
 - **Keyring:** your login password unlocks GNOME Keyring automatically, and `passwd` keeps the two passwords in sync (PAM).
 - **Shell:** zsh becomes your login shell. A starter `~/.zshrc` is written if you don't have one, with the Starship *Pastel Powerline* preset and fastfetch on every new terminal.
@@ -67,21 +67,82 @@ If no AUR helper is installed, the script installs `paru` first.
 Every system file the script edits is backed up first as `<file>.bak.<timestamp>`.
 Running the script again is safe: it skips anything it has already added.
 
+## Repo layout
+
+The config is split into small files, following
+[CachyOS's niri + Noctalia settings](https://github.com/cachyos/cachyos-niri-noctalia).
+
+```text
+config/                       → copied to ~/.config/
+├── niri/
+│   ├── config.kdl            # just includes the files below
+│   └── cfg/
+│       ├── animation.kdl     # animation curves and springs
+│       ├── autostart.kdl     # starts Noctalia
+│       ├── blur.kdl          # blur rules (niri 26.04+)
+│       ├── display.kdl       # monitor setup (commented example)
+│       ├── input.kdl         # keyboard, touchpad, mouse
+│       ├── keybinds.kdl      # all keybinds
+│       ├── layout.kdl        # gaps, column widths
+│       ├── misc.kdl          # environment variables, cursor, misc
+│       └── rules.kdl         # window and layer rules
+└── noctalia/
+    └── config.toml           # polkit agent, GTK/Qt colour templates
+etc/dconf/                    → copied to /etc/dconf/ (GTK theme, cursor defaults)
+install-niri-noctalia.sh
+```
+
+To change your setup, edit the files in `~/.config/niri/cfg/`. niri reloads them as soon as you save.
+Running the script again only replaces them if they differ from the repo, and backs up your version first.
+
 ## Keybinds
+
+`Mod` is the Super (Windows) key. Press `Mod+Shift+Escape` or `Mod+Shift+/` to see every bind on screen.
 
 | Key | Action |
 |---|---|
-| `Mod+Space` | Noctalia launcher |
-| `Mod+S` | Control center |
-| `Mod+Shift+Comma` | Noctalia settings |
-| `Alt+Tab` / `Alt+Shift+Tab` | Window switcher |
-| `Mod+T` | kitty |
+| **Apps** | |
+| `Mod+Return` | kitty |
+| `Mod+B` | Helium |
+| `Mod+E` | Nautilus |
 | `Mod+D` | fuzzel |
-| `Super+Alt+L` | Lock screen |
-| Volume, mic, brightness and media keys | Handled by Noctalia, with on-screen display |
-
-`Mod` is the Super (Windows) key. niri's other default binds are unchanged. Press
-`Mod+Shift+/` to see them all.
+| **Noctalia** | |
+| `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
+| `Mod+S` | Control center |
+| `Mod+Shift+S` or `Mod+Shift+Comma` | Settings |
+| `Mod+Shift+Return` | Wallpaper picker |
+| `Mod+Shift+Q` | Session menu (log out, reboot, shut down) |
+| `Mod+Alt+L` | Lock screen |
+| `Alt+Tab` / `Alt+Shift+Tab` | Window switcher |
+| **Windows** | |
+| `Mod+Q` | Close window |
+| `Mod+←→↑↓` or `Mod+H/J/K/L` | Move focus |
+| `Mod+Ctrl+←→↑↓` or `Mod+Ctrl+H/J/K/L` | Move window or column |
+| `Mod+Home` / `Mod+End` | First / last column |
+| `Mod+[` / `Mod+]` | Move window into the column on the left / right |
+| `Mod+,` / `Mod+.` | Take a window into / out of the column |
+| `Mod+T` | Toggle floating |
+| `Mod+Shift+V` | Switch focus between floating and tiled windows |
+| `Mod+F` / `Mod+Shift+F` / `Mod+M` | Maximise column / fullscreen / maximise to screen edges |
+| `Mod+W` | Tabbed column |
+| `Mod+R` / `Mod+Shift+R` | Cycle column widths |
+| `Mod+Ctrl+R` / `Mod+Ctrl+Shift+R` | Reset / cycle window height |
+| `Mod+-` / `Mod+=` | Column narrower / wider |
+| `Mod+Shift+-` / `Mod+Shift+=` | Window shorter / taller |
+| `Mod+C` / `Mod+Ctrl+C` / `Mod+Ctrl+F` | Centre column / centre visible columns / fill width |
+| **Workspaces and monitors** | |
+| `Mod+1`…`9` | Go to workspace |
+| `Mod+Ctrl+1`…`9` | Move column to workspace |
+| `Mod+Tab` | Previous workspace |
+| `Mod+O` | Overview |
+| `Mod+scroll wheel` | Switch workspace (`+Ctrl` moves the column) |
+| `Mod+Shift+←→↑↓` | Focus another monitor (`+Ctrl` moves the column there) |
+| **System** | |
+| `Ctrl+Shift+1` / `2` / `3` | Screenshot: region / screen / window |
+| `Mod+Shift+P` | Turn monitors off |
+| `Mod+Escape` | Get your shortcuts back from a fullscreen app that grabbed them |
+| `Ctrl+Alt+Delete` | Quit niri |
+| Volume, mic, media and brightness keys | Handled by Noctalia, with on-screen display |
 
 ## After installing
 
@@ -96,6 +157,14 @@ Running the script again is safe: it skips anything it has already added.
 - Spotify, Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
 - Blur needs niri 26.04+. On older versions the script skips it and adds it the next time you run the script.
 
+## Credits
+
+The niri config layout, keybinds, animations, rules and dconf defaults are based on
+[cachyos/cachyos-niri-noctalia](https://github.com/cachyos/cachyos-niri-noctalia)
+(GPL-3.0), with changes: kitty, Helium and fuzzel binds, Noctalia's documented binds,
+qt5ct/qt6ct theming, blur moved into its own file, and Noctalia colour templates.
+Blur and keybind recommendations also come from [Noctalia's niri docs](https://github.com/noctalia-dev/noctalia).
+
 ## License
 
-[GPL-3.0](LICENSE)
+[GPL-3.0](LICENSE). The config files are derived from GPL-3.0 work, so the whole repo uses the same licence.

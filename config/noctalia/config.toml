@@ -1,2 +1,12 @@
+# Noctalia reads every *.toml in ~/.config/noctalia/ and merges them.
+# Settings changed in the GUI are saved to ~/.local/state/noctalia/settings.toml
+# and take priority over this file.
+
 [shell]
-polkit_agent = true
+polkit_agent = true  # password prompts for apps that need admin rights
+
+# Colour GTK and Qt apps to match Noctalia (same as Settings -> Templates).
+# Run `noctalia theme --list-templates` to see others (e.g. "kitty", "btop").
+[theme.templates]
+enable_builtin_templates = true
+builtin_ids = ["gtk3", "gtk4", "qt"]

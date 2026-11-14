@@ -9,7 +9,8 @@
 #   --no-amd-gpu  skip AMD GPU drivers
 #   --yes         don't ask for confirmation
 #
-# Run as your normal user (NOT root). sudo is used where needed.
+# Run as your normal user (NOT root), from a clone of the repo: it installs the
+# config files in config/ and etc/ next to it. sudo is used where needed.
 
 set -euo pipefail
 
@@ -45,6 +46,12 @@ confirm() {
 [[ $EUID -eq 0 ]] && die "Run this as your normal user, not root (AUR builds refuse root)."
 command -v pacman >/dev/null || die "pacman not found — this script is for Arch-based systems."
 command -v sudo   >/dev/null || die "sudo is required."
+
+# Config files live next to this script (config/ and etc/ in the repo).
+REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+[[ -d $REPO_DIR/config/niri && -d $REPO_DIR/etc/dconf ]] || die \
+  "config/ and etc/ not found next to this script. Clone the whole repo and run it from there:
+    git clone https://github.com/lmaule/arch-niri-noctalia.git && cd arch-niri-noctalia && ./install-niri-noctalia.sh"
 
 SHELL_PKG=noctalia
 GREETER_PKG=noctalia-greeter
@@ -450,44 +457,12 @@ pam_add /etc/pam.d/passwd password "password   optional     pam_gnome_keyring.so
 # --- Noctalia shell ----------------------------------------------------------
 install_pkg "$SHELL_PKG"
 
-# Noctalia's built-in polkit agent shows the password prompt when an app needs
-# admin rights (LACT, mounting drives, ...). It's off by default, and niri has
-# no agent of its own. Noctalia merges every *.toml in ~/.config/noctalia/.
-NOCTALIA_CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/noctalia"
-if ! grep -qsE '^\s*polkit_agent\s*=' "$NOCTALIA_CFG_DIR"/*.toml; then
-  info "Enabling Noctalia's polkit agent ($NOCTALIA_CFG_DIR/polkit.toml)"
-  mkdir -p "$NOCTALIA_CFG_DIR"
-  printf '[shell]\npolkit_agent = true  # password prompts for apps that need admin rights\n' \
-    > "$NOCTALIA_CFG_DIR/polkit.toml"
-fi
-
 # --- GTK & Qt theming (adw-gtk3 + qt5ct/qt6ct, coloured by Noctalia) ----------
 # Follows Noctalia's GTK/Qt guide: adw-gtk3 for GTK apps, qt5ct/qt6ct for Qt
-# apps, and Noctalia's built-in gtk3/gtk4/qt templates to colour them to match.
-info "Installing GTK/Qt theming tools"
-sudo pacman -S --needed --noconfirm adw-gtk-theme nwg-look qt5ct qt6ct
-
-# Switch on Noctalia's GTK 3, GTK 4 and Qt colour templates (same as
-# Settings -> Templates). Skipped if you've already chosen templates yourself.
-if ! grep -qsE '^\s*builtin_ids\s*=' "$NOCTALIA_CFG_DIR"/*.toml; then
-  info "Enabling Noctalia's GTK and Qt colour templates ($NOCTALIA_CFG_DIR/theming.toml)"
-  mkdir -p "$NOCTALIA_CFG_DIR"
-  cat > "$NOCTALIA_CFG_DIR/theming.toml" <<'EOF'
-# Added by install-niri-noctalia.sh — colour GTK and Qt apps to match Noctalia.
-# Run `noctalia theme --list-templates` to see others (e.g. "kitty", "btop").
-[theme.templates]
-enable_builtin_templates = true
-builtin_ids = ["gtk3", "gtk4", "qt"]
-EOF
-fi
-
-# Use adw-gtk3 for GTK apps (Noctalia's GTK script switches light/dark itself).
-gsettings_set() {
-  if [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then gsettings set "$@"
-  else dbus-run-session -- gsettings set "$@"; fi
-}
-gsettings_set org.gnome.desktop.interface gtk-theme 'adw-gtk3' \
-  || warn "Couldn't set the GTK theme — pick adw-gtk3 in nwg-look after logging in."
+# apps. Noctalia's gtk3/gtk4/qt colour templates are switched on in
+# config/noctalia/config.toml, and QT_QPA_PLATFORMTHEME in config/niri/cfg/misc.kdl.
+info "Installing GTK/Qt theming tools and cursor theme"
+sudo pacman -S --needed --noconfirm adw-gtk-theme nwg-look qt5ct qt6ct capitaine-cursors dconf
 
 # Point qt5ct/qt6ct at the colour files Noctalia's Qt template writes.
 # Skipped for any of the two you've already configured.
@@ -507,191 +482,73 @@ EOF
   fi
 done
 
-# --- niri config: autostart Noctalia ----------------------------------------
-NIRI_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/niri/config.kdl"
-if [[ ! -f $NIRI_CFG ]]; then
-  info "Creating default niri config at $NIRI_CFG"
-  mkdir -p "$(dirname "$NIRI_CFG")"
-  if [[ -f /usr/share/doc/niri/default-config.kdl ]]; then
-    cp /usr/share/doc/niri/default-config.kdl "$NIRI_CFG"
-  else
-    : > "$NIRI_CFG"
+# System-wide GTK defaults (dark adw-gtk3, capitaine cursors) via dconf, as in
+# CachyOS. Your own settings (e.g. from nwg-look) still take priority.
+info "Installing dconf defaults (etc/dconf)"
+if [[ -f /etc/dconf/profile/user ]] && ! cmp -s "$REPO_DIR/etc/dconf/profile/user" /etc/dconf/profile/user; then
+  sudo cp /etc/dconf/profile/user "/etc/dconf/profile/user.bak.$(date +%s)"
+fi
+sudo install -Dm644 "$REPO_DIR/etc/dconf/profile/user" /etc/dconf/profile/user
+sudo install -Dm644 "$REPO_DIR/etc/dconf/db/local.d/00-arch-niri-noctalia.conf" \
+  /etc/dconf/db/local.d/00-arch-niri-noctalia.conf
+sudo dconf update
+
+# --- Config files: niri + Noctalia (from config/ in this repo) ----------------
+# Copies config/<app> to ~/.config/<app>. If you already have a different
+# config there, it's moved to ~/.config/<app>.bak.<timestamp> first.
+install_config() {
+  local src=$1 dest=$2
+  if [[ -e $dest ]] && diff -rq "$src" "$dest" &>/dev/null; then
+    info "$dest is already up to date"
+    return
   fi
-fi
-
-# Use kitty as the terminal (niri's default config launches alacritty on Mod+T).
-if grep -q 'alacritty' "$NIRI_CFG"; then
-  info "Switching the terminal in $NIRI_CFG from alacritty to kitty"
-  cp "$NIRI_CFG" "$NIRI_CFG.bak.$(date +%s)"
-  sed -i -E 's/"alacritty"/"kitty"/g; s/(hotkey-overlay-title="[^"]*)alacritty/\1kitty/g' "$NIRI_CFG"
-fi
-
-MARKER="// >>> noctalia (added by install-niri-noctalia.sh)"
-if grep -qF "$MARKER" "$NIRI_CFG"; then
-  info "niri config already has the Noctalia settings — skipping"
-else
-  info "Adding Noctalia autostart, rules and keybinds to $NIRI_CFG"
-  cp "$NIRI_CFG" "$NIRI_CFG.bak.$(date +%s)"
-
-  # Keybinds recommended by Noctalia's niri docs (key -> action).
-  NOCTALIA_BINDS=$(cat <<'EOF'
-    // >>> noctalia keybinds
-    Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
-    Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
-    Mod+Shift+Comma { spawn-sh "noctalia msg settings-toggle"; }
-    Alt+Tab { spawn-sh "noctalia msg window-switcher hold"; }
-    Alt+Shift+Tab { spawn-sh "noctalia msg window-switcher hold reverse"; }
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "noctalia msg volume-up"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "noctalia msg volume-down"; }
-    XF86AudioMute allow-when-locked=true { spawn-sh "noctalia msg volume-mute"; }
-    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "noctalia msg brightness-down"; }
-    // Replace niri defaults that call tools this setup doesn't install
-    // (swaylock, playerctl) with Noctalia's own commands.
-    Super+Alt+L hotkey-overlay-title="Lock the Screen" { spawn-sh "noctalia msg session lock"; }
-    XF86AudioMicMute allow-when-locked=true { spawn-sh "noctalia msg mic-mute"; }
-    XF86AudioPlay allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
-    XF86AudioStop allow-when-locked=true { spawn-sh "noctalia msg media stop"; }
-    XF86AudioPrev allow-when-locked=true { spawn-sh "noctalia msg media previous"; }
-    XF86AudioNext allow-when-locked=true { spawn-sh "noctalia msg media next"; }
-    // <<< noctalia keybinds
-EOF
-)
-  BIND_KEYS=$(printf '%s\n' "$NOCTALIA_BINDS" | awk '$1 !~ /^\/\// {print $1}' | tr '\n' ' ')
-
-  # 1) Comment out existing binds that use the same keys (niri rejects duplicates),
-  #    including multi-line bind bodies.
-  # 2) Insert the Noctalia binds right after the first `binds {` line.
-  tmp=$(mktemp)
-  awk -v keys="$BIND_KEYS" -v binds="$NOCTALIA_BINDS" '
-    BEGIN { n = split(keys, k, " "); for (i = 1; i <= n; i++) want[tolower(k[i])] = 1 }
-    function depth_delta(s,   o, c) { o = gsub(/\{/, "{", s); c = gsub(/\}/, "}", s); return o - c }
-    commenting { print "// [noctalia] " $0; d += depth_delta($0); if (d <= 0) commenting = 0; next }
-    in_binds && !/^[[:space:]]*\/\// {
-      key = $1; sub(/\{.*/, "", key)
-      if (tolower(key) in want) {
-        print "// [noctalia] " $0
-        d = depth_delta($0); if (d > 0) commenting = 1
-        next
-      }
-    }
-    !inserted && /^[[:space:]]*binds[[:space:]]*\{/ { print; print binds; inserted = 1; in_binds = 1; bd = 1; next }
-    in_binds { bd += depth_delta($0); if (bd <= 0) in_binds = 0 }
-    { print }
-    END { if (!inserted) { print "\nbinds {"; print binds; print "}" } }
-  ' "$NIRI_CFG" > "$tmp"
-  mv "$tmp" "$NIRI_CFG"
-
-  # Autostart + window rules from Noctalia's niri docs.
-  cat >> "$NIRI_CFG" <<EOF
-
-$MARKER
-spawn-at-startup "noctalia"
-
-window-rule {
-    geometry-corner-radius 20
-    clip-to-geometry true
+  if [[ -e $dest ]]; then
+    local bak; bak="$dest.bak.$(date +%Y%m%d-%H%M%S)"
+    warn "Backing up your existing $dest to $bak"
+    mv "$dest" "$bak"
+  fi
+  info "Installing $dest"
+  mkdir -p "$(dirname "$dest")"
+  cp -r "$src" "$dest"
 }
 
-// Floating Noctalia settings window
-window-rule {
-    match app-id="dev.noctalia.Noctalia"
-    open-floating true
-    default-column-width { fixed 1080; }
-    default-window-height { fixed 920; }
-}
+CFG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+NIRI_DIR="$CFG_HOME/niri"
+NIRI_CFG="$NIRI_DIR/config.kdl"
 
-// Allows notification actions and window activation from Noctalia
-debug {
-    honor-xdg-activation-with-invalid-serial
-}
-// <<< noctalia
-EOF
+# Prepare the niri config in a temp copy so the blur decision is part of the
+# comparison (and re-runs don't back up an unchanged config).
+NIRI_SRC=$(mktemp -d)
+cp -r "$REPO_DIR/config/niri/." "$NIRI_SRC/"
 
-  # Don't run waybar alongside Noctalia.
-  sed -i -E 's|^([[:space:]]*spawn-at-startup[[:space:]]+"waybar".*)$|// [noctalia] \1|' "$NIRI_CFG"
-
-fi
-
-# --- Blur (needs niri >= 26.04; older versions reject these rules) -----------
-BLUR_MARKER="// >>> noctalia blur (added by install-niri-noctalia.sh)"
+# Blur needs niri >= 26.04 — older versions reject the settings in cfg/blur.kdl.
 NIRI_VER=$(niri --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -n1 || true)
 if [[ $WITH_BLUR -eq 0 ]]; then
-  info "Skipping blur settings (--no-blur)"
-elif grep -qF "$BLUR_MARKER" "$NIRI_CFG"; then
-  info "niri config already has the Noctalia blur settings — skipping"
-elif [[ -z $NIRI_VER ]] || ! printf '26.04\n%s\n' "$NIRI_VER" | sort -V -C; then
-  warn "niri ${NIRI_VER:-(unknown version)} is older than 26.04 — skipping blur settings."
-  warn "Re-run this script after upgrading niri to add them."
-else
-  info "Adding Noctalia blur settings (niri $NIRI_VER)"
-  cat >> "$NIRI_CFG" <<'EOF'
-
-// >>> noctalia blur (added by install-niri-noctalia.sh)
-/* Apps: blur them all without xray so it looks more realistic. */
-window-rule {
-    background-effect {
-        blur true
-        xray false
-    }
-}
-
-/*
-  Noctalia: disable xray on all its surfaces so it looks more realistic.
-  Noctalia publishes blur regions automatically when ext-background-effects is available.
-*/
-layer-rule {
-    match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"
-    background-effect {
-        xray false
-        // blur false
-    }
-}
-
-/* Enable blur on Noctalia's window switcher and disable xray. */
-layer-rule {
-    match namespace="noctalia-window-switcher"
-    background-effect {
-        blur true
-        xray false
-    }
-}
-
-/* Fine-tune the blur effect globally. */
-blur {
-    passes 2        // more passes = stronger blur (default: 3)
-    offset 3.0      // sample distance per pass (default: 3.0)
-    noise 0.03      // grain overlay (default: 0.02)
-    saturation 1.0  // color saturation boost (default: 1.5)
-}
-
-/*
-  To turn Noctalia's blur off entirely, uncomment this
-  (removing the rules above is not enough):
-layer-rule {
-    match namespace="^noctalia-"
-    background-effect {
-        blur false
-    }
-}
-*/
-// <<< noctalia blur
-EOF
+  info "Blur disabled (--no-blur)"
+  sed -i 's|^include "./cfg/blur.kdl"|// include "./cfg/blur.kdl"  // disabled by --no-blur|' "$NIRI_SRC/config.kdl"
+elif [[ -z $NIRI_VER ]] || ! version_ge "$NIRI_VER" 26.04; then
+  warn "niri ${NIRI_VER:-(unknown version)} is older than 26.04 — blur disabled."
+  warn "Re-run this script after upgrading niri to turn it on."
+  sed -i 's|^include "./cfg/blur.kdl"|// include "./cfg/blur.kdl"  // needs niri 26.04+|' "$NIRI_SRC/config.kdl"
 fi
 
-# Tell Qt apps to use qt5ct/qt6ct. qt6ct also answers to "qt5ct", so this one
-# value covers both Qt 5 and Qt 6 apps (and both settings apps accept it).
-if ! grep -qE '^\s*QT_QPA_PLATFORMTHEME' "$NIRI_CFG"; then
-  info "Setting QT_QPA_PLATFORMTHEME=qt5ct in $NIRI_CFG"
-  if grep -qE '^environment\s*\{' "$NIRI_CFG"; then
-    sed -i -E '0,/^environment\s*\{/ s//&\n    QT_QPA_PLATFORMTHEME "qt5ct"  \/\/ added by install-niri-noctalia.sh/' "$NIRI_CFG"
-  else
-    printf '\n// Qt apps: use qt5ct/qt6ct (added by install-niri-noctalia.sh)\nenvironment {\n    QT_QPA_PLATFORMTHEME "qt5ct"\n}\n' >> "$NIRI_CFG"
+install_config "$NIRI_SRC" "$NIRI_DIR"
+rm -rf "$NIRI_SRC"
+
+# Noctalia: only config.toml is managed; other files in ~/.config/noctalia
+# (plugins, your own *.toml) are left alone.
+NOCTALIA_DIR="$CFG_HOME/noctalia"
+mkdir -p "$NOCTALIA_DIR"
+install_config "$REPO_DIR/config/noctalia/config.toml" "$NOCTALIA_DIR/config.toml"
+# Files older versions of this script wrote, now part of config.toml.
+for old in polkit.toml theming.toml; do
+  if [[ -f $NOCTALIA_DIR/$old ]] && grep -q 'install-niri-noctalia\|polkit_agent' "$NOCTALIA_DIR/$old"; then
+    mv "$NOCTALIA_DIR/$old" "$NOCTALIA_DIR/$old.bak.$(date +%Y%m%d-%H%M%S)"
   fi
-fi
+done
 
 if command -v niri >/dev/null && ! niri validate -c "$NIRI_CFG"; then
-  warn "niri reports a config error — check $NIRI_CFG (a backup was saved next to it)."
+  warn "niri reports a config error in $NIRI_DIR — your previous config is in $NIRI_DIR.bak.*"
 fi
 
 # --- Greeter (greetd + noctalia-greeter) -------------------------------------

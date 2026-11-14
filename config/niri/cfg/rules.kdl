@@ -3,13 +3,6 @@
         clip-to-geometry true
     }
 
-    window-rule {
-        background-effect {
-          blur true
-          xray false
-        }
-    }
-
     // Floating Noctalia settings window.
     window-rule {
         match app-id="dev.noctalia.Noctalia"
@@ -34,12 +27,4 @@
     layer-rule {
         match namespace="^noctalia-wallpaper"
         place-within-backdrop true
-    }
-
-    layer-rule {
-        match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"
-        background-effect {
-          xray false
-          // blur false
-        }
     }

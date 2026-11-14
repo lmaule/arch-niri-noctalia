@@ -1,3 +1,5 @@
+// Based on CachyOS niri-noctalia settings (GPL-3.0), merged with
+// arch-niri-noctalia's keybinds. See the README for the full list.
 binds {
 
     // ────────────── Keybindings ──────────────
@@ -7,10 +9,12 @@ binds {
     // https://docs.noctalia.dev/getting-started/keybinds/
 
     Mod+Shift+ESCAPE                     { show-hotkey-overlay; }
+    Mod+Shift+Slash                      { show-hotkey-overlay; }
 
     // ─── Applications ───
-    Mod+Return                          hotkey-overlay-title="Open Terminal: Alacritty" { spawn "alacritty"; }
-    Mod+B                               hotkey-overlay-title="Open Browser: firefox" { spawn "firefox"; }
+    Mod+Return                          hotkey-overlay-title="Open Terminal: kitty" { spawn "kitty"; }
+    Mod+B                               hotkey-overlay-title="Open Browser: Helium" { spawn "helium-browser"; }
+    Mod+D                               hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
 
     // --- Noctalia ---
     Mod+Shift+Return                    hotkey-overlay-title="Open Wallpaper Selector: noctalia wallpaper toggle" { spawn-sh "noctalia msg panel-toggle wallpaper"; }
@@ -19,6 +23,11 @@ binds {
     Mod+CTRL+Return                     hotkey-overlay-title="Open App Launcher: noctalia launcher" { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+ALT+L                           hotkey-overlay-title="Lock Screen: noctalia lock" { spawn-sh "noctalia msg session lock"; }
     Mod+Shift+Q                         hotkey-overlay-title="Session Menu: noctalia sessionMenu" { spawn-sh "noctalia msg panel-toggle session"; }
+    // Noctalia docs defaults (alternatives to the binds above)
+    Mod+Space                           hotkey-overlay-title="Open App Launcher: noctalia launcher" { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+Shift+Comma                     hotkey-overlay-title="Open Settings: noctalia settings" { spawn-sh "noctalia msg settings-toggle"; }
+    Alt+Tab                             { spawn-sh "noctalia msg window-switcher hold"; }
+    Alt+Shift+Tab                       { spawn-sh "noctalia msg window-switcher hold reverse"; }
 
     // Please set the text editor of your choice.
     // Mod+Shift+E                               hotkey-overlay-title="Open Text Editor: Zed" { spawn "zed"; }
@@ -35,6 +44,7 @@ binds {
     XF86AudioPrev                       allow-when-locked=true { spawn-sh "noctalia msg media previous"; }
     XF86AudioPlay                       allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
     XF86AudioPause                      allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
+    XF86AudioStop                       allow-when-locked=true { spawn-sh "noctalia msg media stop"; }
 
     // ─── Brightness Controls ───
     XF86MonBrightnessUp                 allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }

@@ -43,7 +43,7 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | Fonts | `noto-fonts`, `noto-fonts-cjk`, `noto-fonts-emoji`, `ttf-jetbrains-mono-nerd`, Nerd Font symbols |
 | Files | `nautilus`, `xdg-user-dirs`, `gvfs` (MTP, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, `ffmpegthumbnailer` |
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
-| Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify-launcher`), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
+| Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify`, AUR), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
 
 If no AUR helper is installed, the script installs `paru` first.
 
@@ -90,7 +90,7 @@ Running the script again is safe: it skips anything it has already added.
 ## Notes
 
 - Tested for script syntax and config edits. Not yet run end to end on real hardware.
-- Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
+- Spotify, Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
 - Blur needs niri 26.04+. On older versions the script skips it and adds it the next time you run the script.
 
 ## License

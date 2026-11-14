@@ -378,9 +378,27 @@ fi
 # Discord (official Arch repo).
 install_one_of "Discord" discord || true
 
-# Spotify: spotify-launcher (official Arch repo, installs/updates Spotify's own
-# client), falling back to the AUR 'spotify' package.
-install_one_of "Spotify" spotify-launcher spotify || true
+# Spotify: the AUR 'spotify' package (most-voted Spotify package on the AUR),
+# which repackages Spotify's official client. Its build checks Spotify's
+# signature, so import Spotify's public signing key into your keyring first.
+SPOTIFY_KEY=E1096BCBFF6D418796DE78515384CE82BA52C83A
+if ! gpg --list-keys "$SPOTIFY_KEY" &>/dev/null; then
+  info "Importing Spotify's package signing key"
+  curl -fsSL https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.gpg | gpg --import - \
+    || warn "Could not import Spotify's key — the Spotify build may fail."
+fi
+if pacman -Qq spotify-launcher &>/dev/null; then
+  if confirm "Remove spotify-launcher (replaced by the AUR 'spotify' package)?"; then
+    sudo pacman -Rns --noconfirm spotify-launcher
+  fi
+fi
+ensure_aur_helper
+if pacman -Qq spotify &>/dev/null; then
+  info "Spotify already installed"
+else
+  info "Installing Spotify (spotify from the AUR)"
+  "$AUR_HELPER" -S --needed --noconfirm spotify || warn "Spotify install failed — skipping."
+fi
 
 # ProtonPlus: manages Proton-GE / Wine-GE etc. for Steam, Lutris, Heroic (AUR).
 install_one_of "ProtonPlus" protonplus || true

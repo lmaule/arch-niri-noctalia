@@ -20,6 +20,15 @@ cd arch-niri-noctalia
 ./install-niri-noctalia.sh
 ```
 
+The installer asks its questions and your sudo password once at the start. After that
+it shows a progress screen instead of the full package output:
+
+![The installer's progress screen](docs/installer.png)
+
+- Everything it does is logged to `~/arch-niri-noctalia-install.log` (the previous run is kept as `.old`).
+- If a step fails, it shows the end of the log and lets you **retry**, **skip** or **quit**.
+- At the end you get a summary of anything worth checking, and an offer to reboot.
+
 Reboot when it finishes, then choose the **niri** session at the Noctalia greeter.
 
 ### Options
@@ -30,7 +39,8 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | `--no-greeter` | Skip greetd and the Noctalia greeter (start niri from a TTY with `niri-session`) |
 | `--no-blur` | Skip the blur rules (they need niri 26.04 or newer) |
 | `--amd-gpu` / `--no-amd-gpu` | Force or skip the AMD driver step (default: detect an AMD card) |
-| `--yes` | Don't ask for confirmation (also enables multilib and removes AMDVLK without asking) |
+| `--yes` | Don't ask questions: answer yes to all of them (multilib, removing AMDVLK and spotify-launcher), stop on the first error, never reboot |
+| `--verbose` | Show the full output instead of the progress screen (also used automatically when the output isn't a terminal) |
 
 ## What it installs
 

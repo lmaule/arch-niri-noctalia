@@ -41,14 +41,62 @@ done
 # The progress screen needs a real terminal; otherwise print everything.
 [[ -t 0 && -t 1 ]] || VERBOSE=1
 
-# ── Colours ─────────────────────────────────────────────────────────────────
+# ── Colours and symbols ─────────────────────────────────────────────────────
+# Three palettes, picked by what the terminal can show:
+#   truecolor  kitty and most modern terminals — the pastel design
+#   256        terminals without 24-bit colour — nearest 256-colour shades
+#   16         the Linux TTY console — basic ANSI colours. It turns every 24-bit
+#              pastel into plain white, so those can't be used there.
+# The TTY's font also lacks symbols like ✔ ✘ ○ and the braille spinner, so it
+# gets plain ones that every console font has.
+COLOR_DEPTH=none
 if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
-  RST=$'\e[0m' BOLD=$'\e[1m' DIM=$'\e[2m'
-  GRN=$'\e[38;2;166;227;161m' RED=$'\e[38;2;243;139;168m' YLW=$'\e[38;2;249;226;175m'
-  ACC=$'\e[38;2;203;166;247m' MUT=$'\e[38;2;127;132;156m' TXT=$'\e[38;2;205;214;244m'
-  BAR_OFF=$'\e[38;2;69;71;90m' EL=$'\e[K'
-else
+  if [[ ${TERM:-} == linux ]]; then
+    COLOR_DEPTH=16
+  elif [[ ${COLORTERM:-} == truecolor || ${COLORTERM:-} == 24bit \
+          || ${TERM:-} =~ (kitty|ghostty|foot|wezterm|alacritty|direct) ]]; then
+    COLOR_DEPTH=truecolor
+  elif (( $(tput colors 2>/dev/null || echo 8) >= 256 )); then
+    COLOR_DEPTH=256
+  else
+    COLOR_DEPTH=16
+  fi
+fi
+
+case $COLOR_DEPTH in
+  truecolor)
+    GRN=$'\e[38;2;166;227;161m' RED=$'\e[38;2;243;139;168m' YLW=$'\e[38;2;249;226;175m'
+    ACC=$'\e[38;2;203;166;247m' MUT=$'\e[38;2;127;132;156m' TXT=$'\e[38;2;205;214;244m'
+    BAR_OFF=$'\e[38;2;69;71;90m'
+    GRAD=( $'\e[38;2;137;180;250m' $'\e[38;2;160;170;250m' $'\e[38;2;180;160;248m'
+           $'\e[38;2;203;166;247m' $'\e[38;2;220;160;230m' $'\e[38;2;245;194;231m' ) ;;
+  256)
+    GRN=$'\e[38;5;151m' RED=$'\e[38;5;211m' YLW=$'\e[38;5;223m'
+    ACC=$'\e[38;5;183m' MUT=$'\e[38;5;103m' TXT=$'\e[38;5;189m'
+    BAR_OFF=$'\e[38;5;238m'
+    GRAD=( $'\e[38;5;111m' $'\e[38;5;147m' $'\e[38;5;141m' $'\e[38;5;183m' $'\e[38;5;182m' $'\e[38;5;218m' ) ;;
+  16)
+    GRN=$'\e[1;32m' RED=$'\e[1;31m' YLW=$'\e[1;33m'
+    ACC=$'\e[1;35m' MUT=$'\e[0;37m' TXT=$'\e[1;37m'
+    BAR_OFF=$'\e[1;30m'   # bold black = dark grey on the console
+    GRAD=( $'\e[1;36m' $'\e[1;34m' $'\e[1;34m' $'\e[1;35m' $'\e[1;35m' $'\e[0;35m' ) ;;
+esac
+
+if [[ $COLOR_DEPTH == none ]]; then
   RST='' BOLD='' DIM='' GRN='' RED='' YLW='' ACC='' MUT='' TXT='' BAR_OFF='' EL=''
+  GRAD=( '' '' '' '' '' '' )
+else
+  RST=$'\e[0m' BOLD=$'\e[1m' EL=$'\e[K'
+  # The console shows "dim" as its own odd colour, so only use it elsewhere.
+  if [[ $COLOR_DEPTH == 16 ]]; then DIM=''; else DIM=$'\e[2m'; fi
+fi
+
+if [[ ${TERM:-} == linux ]]; then
+  SYM_OK='√' SYM_FAIL='x' SYM_TODO='·' SYM_SKIP='-' SYM_ARROW='>' SYM_DASH='-' SYM_DOT='*'
+  SPIN=('|' '/' '-' '\')
+else
+  SYM_OK='✔' SYM_FAIL='✘' SYM_TODO='○' SYM_SKIP='–' SYM_ARROW='›' SYM_DASH='—' SYM_DOT='•'
+  SPIN=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
 fi
 
 LOG="$HOME/arch-niri-noctalia-install.log"
@@ -748,9 +796,7 @@ BANNER=(
 "██║ ╚████║██║██║  ██║██║██║ ╚████║╚██████╔╝╚██████╗"
 "╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝"
 )
-GRAD=( "137;180;250" "160;170;250" "180;160;248" "203;166;247" "220;160;230" "245;194;231" )
-SUBTITLE_PLAIN="niri · noctalia · arch linux — desktop installer"
-SPIN=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+SUBTITLE_PLAIN="niri · noctalia · arch linux $SYM_DASH desktop installer"
 START=$(date +%s)
 UI_ACTIVE=0
 STEP_PID=""
@@ -770,7 +816,7 @@ banner() {
   if (( $(term_cols) >= 56 )); then
     for i in "${!BANNER[@]}"; do
       if [[ -n $RST ]]; then
-        center "${BANNER[i]}" "$(printf '\e[38;2;%sm%s%s' "${GRAD[i]}" "${BANNER[i]}" "$RST")"
+        center "${BANNER[i]}" "${GRAD[i]}${BANNER[i]}${RST}"
       else
         center "${BANNER[i]}" "${BANNER[i]}"
       fi
@@ -779,7 +825,7 @@ banner() {
   else
     center "NIRINOC" "${BOLD}${ACC}NIRINOC${RST}"; printf '%s\n' "$EL"
   fi
-  center "$SUBTITLE_PLAIN" "${MUT}niri · noctalia · arch linux ${ACC}—${MUT} desktop installer${RST}"
+  center "$SUBTITLE_PLAIN" "${MUT}niri · noctalia · arch linux ${ACC}${SYM_DASH}${MUT} desktop installer${RST}"
   printf '%s\n' "$EL"
 }
 
@@ -795,7 +841,7 @@ draw_header() {
   printf '\e[H\e[K\n'
   # Hide the big banner on short terminals so the checklist still fits.
   if (( $(term_lines) >= N + 17 )); then banner; else
-    center "NIRINOC — desktop installer" "${BOLD}${ACC}NIRINOC${RST}${MUT} — desktop installer${RST}"; printf '\e[K\n'
+    center "NIRINOC $SYM_DASH desktop installer" "${BOLD}${ACC}NIRINOC${RST}${MUT} $SYM_DASH desktop installer${RST}"; printf '\e[K\n'
   fi
   printf '\e[K\n'
 
@@ -812,10 +858,17 @@ draw_header() {
   printf '\e[K\n\e[K\n'
 }
 
-# Latest non-empty log line, without colour codes or carriage-return progress.
+# Log text for the screen: no colour codes, and on the Linux console only plain
+# ASCII (its font can't draw characters like — or ✔ that appear in the log).
+screen_safe() {
+  sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' | if [[ ${TERM:-} == linux ]]; then
+    sed 's/—/-/g; s/–/-/g' | LC_ALL=C tr -cd '\11\12\15\40-\176'
+  else cat; fi
+}
+
+# Latest non-empty log line, without carriage-return progress.
 last_log_line() {
-  tail -n 20 "$LOG" 2>/dev/null \
-    | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' | awk -F'\r' '{print $NF}' \
+  tail -n 20 "$LOG" 2>/dev/null | screen_safe | awk -F'\r' '{print $NF}' \
     | grep -v '^[[:space:]]*$' | tail -n 1
 }
 
@@ -828,16 +881,16 @@ draw() {
   for ((i = 0; i < N; i++)); do
     title=${STEP_TITLE[i]}
     case ${STATE[i]} in
-      done)    icon="${GRN}✔"; col=$MUT ;;
+      done)    icon="${GRN}${SYM_OK}"; col=$MUT ;;
       running) icon="${ACC}${SPIN[frame % ${#SPIN[@]}]}"; col="$BOLD$TXT" ;;
-      failed)  icon="${RED}✘"; col="$BOLD$RED" ;;
-      skipped) icon="${BAR_OFF}–"; col=$BAR_OFF; title="$title (skipped)" ;;
-      *)       icon="${BAR_OFF}○"; col=$BAR_OFF ;;
+      failed)  icon="${RED}${SYM_FAIL}"; col="$BOLD$RED" ;;
+      skipped) icon="${BAR_OFF}${SYM_SKIP}"; col=$BAR_OFF; title="$title (skipped)" ;;
+      *)       icon="${BAR_OFF}${SYM_TODO}"; col=$BAR_OFF ;;
     esac
     printf '%*s%s%s  %s%s%s\e[K\n' "$left" '' "$icon" "$RST" "$col" "$title" "$RST"
   done
   last=$(last_log_line | cut -c1-$(( cols - left - 4 )))
-  printf '\e[K\n%*s%s› %s%s\e[K\n\e[K\n' "$left" '' "$DIM$MUT" "$last" "$RST"
+  printf '\e[K\n%*s%s%s %s%s\e[K\n\e[K\n' "$left" '' "$DIM$MUT" "$SYM_ARROW" "$last" "$RST"
   center "Full log: ~/${LOG##*/}   ·   Ctrl+C to cancel" "${DIM}${MUT}Full log: ~/${LOG##*/}   ·   Ctrl+C to cancel${RST}"
   printf '\e[K\e[J'
 }
@@ -887,14 +940,14 @@ failure_menu() {
   if [[ $VERBOSE -eq 0 ]]; then
     # The error panel replaces the checklist so everything fits on one screen.
     printf '\e[2J'; draw_header
-    center "✘ Step $((i + 1))/$N failed: ${STEP_TITLE[i]}" \
-      "${BOLD}${RED}✘ Step $((i + 1))/$N failed: ${RST}${BOLD}${STEP_TITLE[i]}${RST}"
+    center "$SYM_FAIL Step $((i + 1))/$N failed: ${STEP_TITLE[i]}" \
+      "${BOLD}${RED}${SYM_FAIL} Step $((i + 1))/$N failed: ${RST}${BOLD}${STEP_TITLE[i]}${RST}"
     printf '\n\n      %sLast lines of the log:%s\n' "$MUT" "$RST"
-    tail -n 12 "$LOG" | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' | cut -c1-$(( cols - 12 )) \
+    tail -n 12 "$LOG" | screen_safe | cut -c1-$(( cols - 12 )) \
       | sed "s/^/      ${MUT}│${RST} /"
     printf '\n      %sFull log: %s%s\n' "$DIM$MUT" "$LOG" "$RST"
   else
-    printf '\n%s✘ Step %d/%d failed: %s%s  (log: %s)\n' "$BOLD$RED" "$((i + 1))" "$N" "${STEP_TITLE[i]}" "$RST" "$LOG"
+    printf '\n%s%s Step %d/%d failed: %s%s  (log: %s)\n' "$BOLD$RED" "$SYM_FAIL" "$((i + 1))" "$N" "${STEP_TITLE[i]}" "$RST" "$LOG"
   fi
   if [[ $ASSUME_YES -eq 1 ]]; then CHOICE=q; return; fi
   printf '\n      %s[r]%s retry   %s[s]%s skip   %s[q]%s quit and show the log  ' \
@@ -916,19 +969,19 @@ fi
 clear 2>/dev/null || true
 echo; banner; echo
 printf '  %sThis will install and set up:%s\n' "$BOLD" "$RST"
-printf '   %s•%s niri, %s%s\n' "$ACC" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER -eq 1 ]] && echo ", $GREETER_PKG (login screen)")"
-if [[ $AMD_GPU == yes ]]; then printf '   %s•%s AMD GPU drivers and LACT\n' "$ACC" "$RST"; fi
-printf '   %s•%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$RST"
-printf '   %s•%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop\n' "$ACC" "$RST"
-printf '   %s•%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$RST"
-printf '   %s•%s your niri + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$RST"
+printf '   %s%s%s niri, %s%s\n' "$ACC" "$SYM_DOT" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER -eq 1 ]] && echo ", $GREETER_PKG (login screen)")"
+if [[ $AMD_GPU == yes ]]; then printf '   %s%s%s AMD GPU drivers and LACT\n' "$ACC" "$SYM_DOT" "$RST"; fi
+printf '   %s%s%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s your niri + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$SYM_DOT" "$RST"
 
 confirm "Continue?" || exit 0
 
 # Every other question is asked now, so nothing interrupts the install later.
 WANT_MULTILIB=1
 if ! multilib_enabled; then
-  confirm "Enable the [multilib] repo? (32-bit libraries — needed by Steam and Proton)" || WANT_MULTILIB=0
+  confirm "Enable the [multilib] repo? (32-bit libraries, needed by Steam and Proton)" || WANT_MULTILIB=0
 fi
 REMOVE_AMDVLK=0
 if [[ $AMD_GPU == yes ]] && pacman -Qq amdvlk &>/dev/null; then
@@ -988,23 +1041,23 @@ ui_stop
 ELAPSED=$(( $(date +%s) - START ))
 clear 2>/dev/null || true
 echo; banner; echo
-center "✔ All done in $((ELAPSED / 60))m $((ELAPSED % 60))s" "${BOLD}${GRN}✔ All done in $((ELAPSED / 60))m $((ELAPSED % 60))s${RST}"
+center "$SYM_OK All done in $((ELAPSED / 60))m $((ELAPSED % 60))s" "${BOLD}${GRN}${SYM_OK} All done in $((ELAPSED / 60))m $((ELAPSED % 60))s${RST}"
 printf '\n\n'
 
 if [[ -s $WARN_FILE ]]; then
   printf '  %sWorth a look:%s\n' "$BOLD$YLW" "$RST"
-  sort -u "$WARN_FILE" | sed "s/^/   ${YLW}!${RST} /"
+  sort -u "$WARN_FILE" | screen_safe | sed "s/^/   ${YLW}!${RST} /"
   echo
 fi
 
 printf '  %sNext:%s\n' "$BOLD" "$RST"
 if [[ $WITH_GREETER -eq 1 ]]; then
-  printf '   %s•%s Reboot, then pick %sniri%s at the Noctalia login screen.\n' "$ACC" "$RST" "$ACC" "$RST"
+  printf '   %s%s%s Reboot, then pick %sniri%s at the Noctalia login screen.\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
 else
-  printf '   %s•%s Log out and start niri from a TTY with: %sniri-session%s\n' "$ACC" "$RST" "$ACC" "$RST"
+  printf '   %s%s%s Log out and start niri from a TTY with: %sniri-session%s\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
 fi
-printf '   %s•%s Press %sMod+Shift+/%s in niri to see all keybinds.\n' "$ACC" "$RST" "$BOLD" "$RST"
-printf '   %s•%s Full log: %s\n\n' "$ACC" "$RST" "$LOG"
+printf '   %s%s%s Press %sMod+Shift+/%s in niri to see all keybinds.\n' "$ACC" "$SYM_DOT" "$RST" "$BOLD" "$RST"
+printf '   %s%s%s Full log: %s\n\n' "$ACC" "$SYM_DOT" "$RST" "$LOG"
 
 if [[ $ASSUME_YES -eq 0 && $WITH_GREETER -eq 1 ]]; then
   if confirm "Reboot now?"; then sudo systemctl reboot; fi

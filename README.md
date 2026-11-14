@@ -28,6 +28,7 @@ it shows a progress screen instead of the full package output:
 ![The installer's progress screen](docs/installer.png)
 
 - Everything it does is logged to `~/arch-niri-noctalia-install.log` (the previous run is kept as `.old`).
+- It adapts to your terminal: the full 24-bit colour design in kitty and other modern terminals, and basic colours with plain symbols on the Linux console (TTY), whose font can't show the fancy ones.
 - If a step fails, it shows the end of the log and lets you **retry**, **skip** or **quit**.
 - At the end you get a summary of anything worth checking, and an offer to reboot.
 

@@ -57,6 +57,7 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
 | GTK & Qt theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct`, `capitaine-cursors`, `dconf` |
 | Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify`, AUR), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
+| Gaming & VMs | `mangohud` (+ `lib32-mangohud`), `goverlay`, Faugus Launcher (`faugus-launcher`, AUR), VM Curator (`vm-curator`, AUR) with `edk2-ovmf` and `swtpm` for UEFI/Windows 11 VMs |
 
 If no AUR helper is installed, the script installs `paru` first.
 
@@ -167,7 +168,7 @@ Running the script again only replaces them if they differ from the repo, and ba
 
 - Every push, and every Monday, a [GitHub test](.github/workflows/install-test.yml) runs the installer in an Arch Linux container with real packages and validates the niri config with niri.
   A container can't boot or test the login screen and GPU, so a first install on real hardware is still the final check.
-- Spotify, Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
+- Spotify, Claude Desktop, Helium, ProtonPlus, Faugus Launcher and VM Curator come from the AUR. The AUR packages are maintained by the community, not by the app developers.
 - Blur needs niri 26.04+. On older versions the script skips it and adds it the next time you run the script.
 
 ## Credits

@@ -57,7 +57,8 @@ jobs:
           grep -q 'noctalia-greeter-session' /etc/greetd/config.toml
           getent passwd tester | grep -q '/usr/bin/zsh$'
           for p in niri noctalia noctalia-greeter kitty zsh nautilus steam discord \
-                   spotify helium-browser-bin protonplus claude-desktop lact; do
+                   spotify helium-browser-bin protonplus claude-desktop lact \
+                   mangohud lib32-mangohud goverlay faugus-launcher vm-curator swtpm edk2-ovmf; do
             pacman -Q "$p"
           done
 

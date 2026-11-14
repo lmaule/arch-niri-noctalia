@@ -522,6 +522,24 @@ step_apps() {
   install_one_of "Claude Desktop" claude-desktop || true
 }
 
+# Gaming tools and VMs. Optional like the apps above: failures are reported in
+# the summary, not fatal.
+#   mangohud:        FPS / temperature / frame-time overlay (lib32 for 32-bit games)
+#   goverlay:        GUI for configuring MangoHud
+#   faugus-launcher: runs Windows games outside Steam with UMU-Launcher (AUR)
+#   vm-curator:      terminal app for QEMU/KVM virtual machines (AUR); edk2-ovmf
+#                    adds UEFI boot and swtpm a TPM, both needed for Windows 11 VMs
+step_gaming_vms() {
+  local -a pkgs=(mangohud goverlay edk2-ovmf swtpm)
+  if multilib_enabled; then pkgs+=(lib32-mangohud); fi
+  info "Installing MangoHud, GOverlay and VM firmware (UEFI/TPM)"
+  sudo pacman -S --needed --noconfirm "${pkgs[@]}" \
+    || warn "MangoHud/GOverlay failed to install — skipped. See the log for details."
+
+  install_one_of "Faugus Launcher" faugus-launcher || true
+  install_one_of "VM Curator" vm-curator || true
+}
+
 # GNOME Keyring (stores share/Wi-Fi/app passwords), unlocked at login
 step_keyring() {
   local login_pam f
@@ -695,7 +713,8 @@ EOF
 
 # Step list: function | title shown on screen.
 STEP_FN=(step_update step_aur step_amd step_niri step_zsh step_fonts step_files
-         step_helium step_apps step_keyring step_noctalia step_theming step_config step_greeter)
+         step_helium step_apps step_gaming_vms step_keyring step_noctalia step_theming step_config
+         step_greeter)
 STEP_TITLE=(
   "Updating Arch"
   "AUR helper (paru)"
@@ -706,6 +725,7 @@ STEP_TITLE=(
   "Nautilus, phones and network shares"
   "Helium browser"
   "Steam, Discord, Spotify, ProtonPlus, Claude"
+  "MangoHud, GOverlay, Faugus, VM Curator"
   "GNOME Keyring"
   "Noctalia shell"
   "GTK and Qt theming"
@@ -899,6 +919,7 @@ printf '   %s•%s niri, %s%s\n' "$ACC" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER 
 if [[ $AMD_GPU == yes ]]; then printf '   %s•%s AMD GPU drivers and LACT\n' "$ACC" "$RST"; fi
 printf '   %s•%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$RST"
 printf '   %s•%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop\n' "$ACC" "$RST"
+printf '   %s•%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$RST"
 printf '   %s•%s your niri + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$RST"
 
 confirm "Continue?" || exit 0
@@ -933,8 +954,10 @@ if [[ -f $LOG ]]; then mv -f "$LOG" "$LOG.old"; fi
 } > "$LOG"
 
 for ((i = 0; i < N; i++)); do STATE[i]=pending; done
-[[ $AMD_GPU == yes ]]     || STATE[2]=skipped
-[[ $WITH_GREETER -eq 1 ]] || STATE[13]=skipped
+# Look steps up by name, so adding steps never shifts these.
+step_index() { local j; for j in "${!STEP_FN[@]}"; do [[ ${STEP_FN[j]} == "$1" ]] && { echo "$j"; return; }; done; }
+[[ $AMD_GPU == yes ]]     || STATE[$(step_index step_amd)]=skipped
+[[ $WITH_GREETER -eq 1 ]] || STATE[$(step_index step_greeter)]=skipped
 
 [[ $VERBOSE -eq 1 ]] || ui_start
 

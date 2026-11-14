@@ -461,6 +461,52 @@ if ! grep -qsE '^\s*polkit_agent\s*=' "$NOCTALIA_CFG_DIR"/*.toml; then
     > "$NOCTALIA_CFG_DIR/polkit.toml"
 fi
 
+# --- GTK & Qt theming (adw-gtk3 + qt5ct/qt6ct, coloured by Noctalia) ----------
+# Follows Noctalia's GTK/Qt guide: adw-gtk3 for GTK apps, qt5ct/qt6ct for Qt
+# apps, and Noctalia's built-in gtk3/gtk4/qt templates to colour them to match.
+info "Installing GTK/Qt theming tools"
+sudo pacman -S --needed --noconfirm adw-gtk-theme nwg-look qt5ct qt6ct
+
+# Switch on Noctalia's GTK 3, GTK 4 and Qt colour templates (same as
+# Settings -> Templates). Skipped if you've already chosen templates yourself.
+if ! grep -qsE '^\s*builtin_ids\s*=' "$NOCTALIA_CFG_DIR"/*.toml; then
+  info "Enabling Noctalia's GTK and Qt colour templates ($NOCTALIA_CFG_DIR/theming.toml)"
+  mkdir -p "$NOCTALIA_CFG_DIR"
+  cat > "$NOCTALIA_CFG_DIR/theming.toml" <<'EOF'
+# Added by install-niri-noctalia.sh — colour GTK and Qt apps to match Noctalia.
+# Run `noctalia theme --list-templates` to see others (e.g. "kitty", "btop").
+[theme.templates]
+enable_builtin_templates = true
+builtin_ids = ["gtk3", "gtk4", "qt"]
+EOF
+fi
+
+# Use adw-gtk3 for GTK apps (Noctalia's GTK script switches light/dark itself).
+gsettings_set() {
+  if [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then gsettings set "$@"
+  else dbus-run-session -- gsettings set "$@"; fi
+}
+gsettings_set org.gnome.desktop.interface gtk-theme 'adw-gtk3' \
+  || warn "Couldn't set the GTK theme — pick adw-gtk3 in nwg-look after logging in."
+
+# Point qt5ct/qt6ct at the colour files Noctalia's Qt template writes.
+# Skipped for any of the two you've already configured.
+for v in qt5ct qt6ct; do
+  QTCT_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/$v/$v.conf"
+  if [[ ! -f $QTCT_CFG ]]; then
+    info "Configuring $v to use Noctalia's colours ($QTCT_CFG)"
+    mkdir -p "$(dirname "$QTCT_CFG")/colors"
+    cat > "$QTCT_CFG" <<EOF
+[Appearance]
+color_scheme_path=${XDG_CONFIG_HOME:-$HOME/.config}/$v/colors/noctalia.conf
+custom_palette=true
+style=Fusion
+icon_theme=Adwaita
+standard_dialogs=default
+EOF
+  fi
+done
+
 # --- niri config: autostart Noctalia ----------------------------------------
 NIRI_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/niri/config.kdl"
 if [[ ! -f $NIRI_CFG ]]; then
@@ -631,6 +677,17 @@ layer-rule {
 */
 // <<< noctalia blur
 EOF
+fi
+
+# Tell Qt apps to use qt5ct/qt6ct. qt6ct also answers to "qt5ct", so this one
+# value covers both Qt 5 and Qt 6 apps (and both settings apps accept it).
+if ! grep -qE '^\s*QT_QPA_PLATFORMTHEME' "$NIRI_CFG"; then
+  info "Setting QT_QPA_PLATFORMTHEME=qt5ct in $NIRI_CFG"
+  if grep -qE '^environment\s*\{' "$NIRI_CFG"; then
+    sed -i -E '0,/^environment\s*\{/ s//&\n    QT_QPA_PLATFORMTHEME "qt5ct"  \/\/ added by install-niri-noctalia.sh/' "$NIRI_CFG"
+  else
+    printf '\n// Qt apps: use qt5ct/qt6ct (added by install-niri-noctalia.sh)\nenvironment {\n    QT_QPA_PLATFORMTHEME "qt5ct"\n}\n' >> "$NIRI_CFG"
+  fi
 fi
 
 if command -v niri >/dev/null && ! niri validate -c "$NIRI_CFG"; then

@@ -43,6 +43,7 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | Fonts | `noto-fonts`, `noto-fonts-cjk`, `noto-fonts-emoji`, `ttf-jetbrains-mono-nerd`, Nerd Font symbols |
 | Files | `nautilus`, `xdg-user-dirs`, `gvfs` (MTP, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, `ffmpegthumbnailer` |
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
+| GTK & Qt theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct` |
 | Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify`, AUR), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
 
 If no AUR helper is installed, the script installs `paru` first.
@@ -55,6 +56,8 @@ If no AUR helper is installed, the script installs `paru` first.
   - Makes kitty the terminal (`Mod+T`).
   - Adds Noctalia's keybinds, commenting out any default binds that use the same keys.
 - **Noctalia:** turns on its built-in polkit agent, so apps that need admin rights can show a password prompt (`~/.config/noctalia/polkit.toml`).
+- **App theming:** GTK apps use `adw-gtk3` and Qt apps use qt5ct/qt6ct (`QT_QPA_PLATFORMTHEME=qt5ct` in niri, which covers both).
+  Noctalia's `gtk3`, `gtk4` and `qt` templates are switched on, so apps follow Noctalia's colours (`~/.config/noctalia/theming.toml`).
 - **Login:** greetd runs the Noctalia greeter, and any previous display manager is disabled.
 - **Keyring:** your login password unlocks GNOME Keyring automatically, and `passwd` keeps the two passwords in sync (PAM).
 - **Shell:** zsh becomes your login shell. A starter `~/.zshrc` is written if you don't have one, with the Starship *Pastel Powerline* preset and fastfetch on every new terminal.

@@ -98,4 +98,4 @@ Running the script again is safe: it skips anything it has already added.
 
 ## License
 
-[MIT](LICENSE)
+[GPL-3.0](LICENSE)

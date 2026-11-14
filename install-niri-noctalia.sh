@@ -221,12 +221,29 @@ ensure_multilib() {
   multilib_enabled
 }
 
+# AMD/ATI graphics = PCI vendor 0x1002 with a display class (0x03xxxx). Read
+# from the PCI bus, not /sys/class/drm: on a fresh install amdgpu often can't
+# load yet (its firmware isn't installed), so the card only shows up on PCI.
 has_amd_gpu() {
-  local v
-  for v in /sys/class/drm/card*/device/vendor; do
-    [[ -r $v && $(<"$v") == 0x1002 ]] && return 0
+  local d
+  for d in /sys/bus/pci/devices/*; do
+    [[ -r $d/vendor && -r $d/class ]] || continue
+    if [[ $(<"$d/vendor") == 0x1002 && $(<"$d/class") == 0x03* ]]; then return 0; fi
   done
   return 1
+}
+
+# Graphics devices on the PCI bus, for the log.
+list_gpus() {
+  local d drv found=0
+  for d in /sys/bus/pci/devices/*; do
+    [[ -r $d/class && $(<"$d/class") == 0x03* ]] || continue
+    found=1
+    drv=none
+    if [[ -e $d/driver ]]; then drv=$(basename "$(readlink -f "$d/driver")"); fi
+    printf '  %s vendor=%s device=%s driver=%s\n' "${d##*/}" "$(<"$d/vendor")" "$(<"$d/device")" "$drv"
+  done
+  [[ $found -eq 1 ]] || echo "  (none found)"
 }
 
 # Enable a systemd service; start it now too if systemd is running (it isn't
@@ -801,6 +818,7 @@ START=$(date +%s)
 UI_ACTIVE=0
 STEP_PID=""
 SUDO_KEEPALIVE=""
+SUDO_DIR=""
 
 term_cols()  { tput cols 2>/dev/null || echo 80; }
 term_lines() { tput lines 2>/dev/null || echo 40; }
@@ -902,6 +920,7 @@ cleanup() {
   ui_stop
   if [[ -n $STEP_PID ]]; then kill "$STEP_PID" 2>/dev/null; fi
   if [[ -n $SUDO_KEEPALIVE ]]; then kill "$SUDO_KEEPALIVE" 2>/dev/null; fi
+  if [[ -n $SUDO_DIR ]]; then rm -rf "$SUDO_DIR"; fi   # deletes the saved password
   rm -f "$WARN_FILE"
 }
 trap cleanup EXIT
@@ -970,7 +989,11 @@ clear 2>/dev/null || true
 echo; banner; echo
 printf '  %sThis will install and set up:%s\n' "$BOLD" "$RST"
 printf '   %s%s%s niri, %s%s\n' "$ACC" "$SYM_DOT" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER -eq 1 ]] && echo ", $GREETER_PKG (login screen)")"
-if [[ $AMD_GPU == yes ]]; then printf '   %s%s%s AMD GPU drivers and LACT\n' "$ACC" "$SYM_DOT" "$RST"; fi
+if [[ $AMD_GPU == yes ]]; then
+  printf '   %s%s%s AMD GPU drivers and LACT\n' "$ACC" "$SYM_DOT" "$RST"
+else
+  printf '   %s%s No AMD GPU found, so the AMD driver step will be skipped (use --amd-gpu to force it).%s\n' "$MUT" "$SYM_DOT" "$RST"
+fi
 printf '   %s%s%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$SYM_DOT" "$RST"
@@ -992,9 +1015,40 @@ if pacman -Qq spotify-launcher &>/dev/null; then
   confirm "Remove spotify-launcher? (replaced by the AUR 'spotify' package)" && REMOVE_SPOTIFY_LAUNCHER=1
 fi
 
-# Ask for the sudo password once, then keep it fresh in the background.
-printf '\n%s::%s Your password is needed for sudo (asked once).\n' "$ACC" "$RST"
-sudo -v || die "sudo failed."
+# sudo: ask for the password once here, then hand it to every later sudo call
+# (including the ones inside makepkg and paru), so nothing can stop and wait
+# for a password behind the progress screen.
+#   - The password is kept in a file only you can read, in your runtime
+#     directory (in memory, not on disk), and deleted when the installer exits.
+#   - A small `sudo` wrapper first on PATH runs the real sudo with -A, which
+#     makes sudo ask that file (via SUDO_ASKPASS) instead of the terminal.
+REAL_SUDO=$(command -v sudo)
+sudo_needs_password() {
+  "$REAL_SUDO" -k 2>/dev/null          # forget any cached login, then test
+  ! "$REAL_SUDO" -n true 2>/dev/null
+}
+if sudo_needs_password; then
+  [[ -t 0 ]] || die "sudo needs your password but there's no terminal to ask in. Run the installer interactively."
+  SUDO_DIR=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/nirinoc-sudo.XXXXXX")
+  chmod 700 "$SUDO_DIR"
+  printf '\n%s::%s Your password is needed for sudo. It is asked once and reused for the whole install.\n' "$ACC" "$RST"
+  sudo_ok=0
+  for _ in 1 2 3; do
+    read -rsp "   Password: " SUDO_PW < /dev/tty; echo
+    if printf '%s\n' "$SUDO_PW" | "$REAL_SUDO" -S -p '' -v 2>/dev/null; then sudo_ok=1; break; fi
+    printf '   %sSorry, try again.%s\n' "$RED" "$RST"
+  done
+  [[ $sudo_ok -eq 1 ]] || die "Wrong password three times."
+  ( umask 077; printf '%s\n' "$SUDO_PW" > "$SUDO_DIR/pw" )
+  unset SUDO_PW
+  printf '#!/bin/sh\ncat %q\n' "$SUDO_DIR/pw" > "$SUDO_DIR/askpass"
+  mkdir -m 700 "$SUDO_DIR/bin"
+  printf '#!/bin/sh\nexec %q -A "$@"\n' "$REAL_SUDO" > "$SUDO_DIR/bin/sudo"
+  chmod 700 "$SUDO_DIR/askpass" "$SUDO_DIR/bin/sudo"
+  export SUDO_ASKPASS="$SUDO_DIR/askpass"
+  export PATH="$SUDO_DIR/bin:$PATH"
+fi
+# Keep sudo's login fresh too, so most calls don't even need the password file.
 ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
 SUDO_KEEPALIVE=$!
 
@@ -1005,6 +1059,7 @@ if [[ -f $LOG ]]; then mv -f "$LOG" "$LOG.old"; fi
   echo "repo: $REPO_DIR ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo 'no git'))"
   echo "options: $*"
   echo "AMD GPU: $AMD_GPU   multilib: $WANT_MULTILIB   greeter: $WITH_GREETER   blur: $WITH_BLUR"
+  echo "graphics devices (PCI):"; list_gpus
 } > "$LOG"
 
 for ((i = 0; i < N; i++)); do STATE[i]=pending; done

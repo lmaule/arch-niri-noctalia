@@ -79,6 +79,7 @@ If no AUR helper is installed, the script installs `paru` first.
 - **Shell:** zsh becomes your login shell. A starter `~/.zshrc` is written if you don't have one, with the Starship *Pastel Powerline* preset and fastfetch on every new terminal.
 - **Defaults:** Helium is the default browser and Nautilus opens folders. kitty uses JetBrains Mono Nerd Font.
 - **Screenshots:** saved to `~/Pictures/Screenshots` and copied to the clipboard.
+- **Nautilus sidebar:** Documents, Downloads, Music, Pictures and Videos are added to it, as GNOME does at login (`~/.config/gtk-3.0/bookmarks`; your own bookmarks are kept).
 - **Network shares:** Avahi is enabled, and `.local` hostnames resolve.
 
 Every system file the script edits is backed up first as `<file>.bak.<timestamp>`.

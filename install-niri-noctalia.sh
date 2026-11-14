@@ -485,6 +485,23 @@ step_files() {
   # Create ~/Desktop, ~/Documents, ~/Downloads, ~/Music, ~/Pictures, ~/Videos, ...
   xdg-user-dirs-update
 
+  # Nautilus's sidebar shows the folders listed in ~/.config/gtk-3.0/bookmarks.
+  # GNOME fills that in at login with xdg-user-dirs-gtk, which needs a running
+  # GNOME-style session (niri doesn't run it), so add the same entries here.
+  # Your own bookmarks are kept; entries already there aren't added twice.
+  local bookmarks="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks" dir name uri
+  mkdir -p "$(dirname "$bookmarks")"
+  touch "$bookmarks"
+  for name in DOCUMENTS DOWNLOAD MUSIC PICTURES VIDEOS; do
+    dir=$(xdg-user-dir "$name")
+    [[ -n $dir && $dir != "$HOME" && -d $dir ]] || continue
+    uri="file://${dir// /%20}"
+    if ! awk -v u="$uri" '$1 == u { found = 1 } END { exit !found }' "$bookmarks"; then
+      info "Adding $dir to Nautilus's sidebar"
+      printf '%s\n' "$uri" >> "$bookmarks"
+    fi
+  done
+
   # Make Nautilus the default app for opening folders.
   xdg-mime default org.gnome.Nautilus.desktop inode/directory
 

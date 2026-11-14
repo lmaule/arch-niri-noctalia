@@ -53,6 +53,7 @@ jobs:
           test -f $h/.config/kitty/kitty.conf
           test -f $h/.config/starship.toml
           test -d $h/Pictures/Screenshots
+          grep -q "file://$h/Documents" $h/.config/gtk-3.0/bookmarks   # Nautilus sidebar
           grep -q 'pam_gnome_keyring.so' /etc/pam.d/greetd
           grep -q 'noctalia-greeter-session' /etc/greetd/config.toml
           getent passwd tester | grep -q '/usr/bin/zsh$'

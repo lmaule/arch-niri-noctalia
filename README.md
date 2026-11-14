@@ -25,7 +25,9 @@ cd arch-niri-noctalia
 The installer asks its questions and your sudo password once at the start. After that
 it shows a progress screen instead of the full package output:
 
-![The installer's progress screen](docs/installer.png)
+| In kitty and other modern terminals | On the Linux console (TTY) |
+|---|---|
+| ![The installer's progress screen in kitty](docs/installer.png) | ![The installer's progress screen on the Linux console](docs/installer-tty.png) |
 
 - Everything it does is logged to `~/arch-niri-noctalia-install.log` (the previous run is kept as `.old`).
 - It adapts to your terminal: the full 24-bit colour design in kitty and other modern terminals, and basic colours with plain symbols on the Linux console (TTY), whose font can't show the fancy ones.

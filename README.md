@@ -48,7 +48,7 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 
 | Area | Packages |
 |---|---|
-| Desktop | `niri`, `noctalia`, `xwayland-satellite`, `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, `fuzzel`, PipeWire, `polkit`, `upower` |
+| Desktop | `niri`, `noctalia`, `xwayland-satellite`, `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower` |
 | Login screen | `greetd`, `noctalia-greeter` |
 | AMD GPU (RX 9000 / RDNA 4) | `mesa`, `vulkan-radeon`, `linux-firmware-amdgpu`, 32-bit drivers, `lact`, `rocm-smi-lib`, `vulkan-tools`, `mesa-utils`, `libva-utils` |
 | Terminal & shell | `kitty`, `zsh` with completions, autosuggestions and syntax highlighting, `starship`, `btop`, `fastfetch` |
@@ -118,7 +118,6 @@ Running the script again only replaces them if they differ from the repo, and ba
 | `Mod+Return` | kitty |
 | `Mod+B` | Helium |
 | `Mod+E` | Nautilus |
-| `Mod+D` | fuzzel |
 | **Noctalia** | |
 | `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
 | `Mod+S` | Control center |
@@ -175,7 +174,7 @@ Running the script again only replaces them if they differ from the repo, and ba
 
 The niri config layout, keybinds, animations, rules and dconf defaults are based on
 [cachyos/cachyos-niri-noctalia](https://github.com/cachyos/cachyos-niri-noctalia)
-(GPL-3.0), with changes: kitty, Helium and fuzzel binds, Noctalia's documented binds,
+(GPL-3.0), with changes: kitty and Helium binds, Noctalia's documented binds,
 qt5ct/qt6ct theming, blur moved into its own file, and Noctalia colour templates.
 Blur and keybind recommendations also come from [Noctalia's niri docs](https://github.com/noctalia-dev/noctalia).
 

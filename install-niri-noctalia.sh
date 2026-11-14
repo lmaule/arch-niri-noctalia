@@ -295,7 +295,7 @@ step_niri() {
   install_pkg niri
   sudo pacman -S --needed --noconfirm \
     xdg-desktop-portal-gnome xdg-desktop-portal-gtk \
-    xwayland-satellite kitty fuzzel \
+    xwayland-satellite kitty \
     btop fastfetch hwdata \
     pipewire wireplumber pipewire-pulse \
     polkit upower

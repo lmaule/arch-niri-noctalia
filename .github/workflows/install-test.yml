@@ -58,7 +58,7 @@ jobs:
           getent passwd tester | grep -q '/usr/bin/zsh$'
           for p in niri noctalia noctalia-greeter kitty zsh nautilus steam discord \
                    spotify helium-browser-bin protonplus claude-desktop lact \
-                   mangohud lib32-mangohud goverlay faugus-launcher vm-curator swtpm edk2-ovmf; do
+                   mangohud lib32-mangohud goverlay faugus-launcher vm-curator-bin swtpm edk2-ovmf; do
             pacman -Q "$p"
           done
 

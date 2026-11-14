@@ -57,7 +57,7 @@ Reboot when it finishes, then choose the **niri** session at the Noctalia greete
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
 | GTK & Qt theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct`, `capitaine-cursors`, `dconf` |
 | Apps | Helium browser (`helium-browser-bin`, AUR), Steam, Discord, Spotify (`spotify`, AUR), ProtonPlus (AUR), Claude Desktop (`claude-desktop`, AUR) |
-| Gaming & VMs | `mangohud` (+ `lib32-mangohud`), `goverlay`, Faugus Launcher (`faugus-launcher`, AUR), VM Curator (`vm-curator`, AUR) with `edk2-ovmf` and `swtpm` for UEFI/Windows 11 VMs |
+| Gaming & VMs | `mangohud` (+ `lib32-mangohud`), `goverlay`, Faugus Launcher (`faugus-launcher`, AUR), VM Curator (`vm-curator-bin`, AUR) with `edk2-ovmf` and `swtpm` for UEFI/Windows 11 VMs |
 
 If no AUR helper is installed, the script installs `paru` first.
 

@@ -527,7 +527,8 @@ step_apps() {
 #   mangohud:        FPS / temperature / frame-time overlay (lib32 for 32-bit games)
 #   goverlay:        GUI for configuring MangoHud
 #   faugus-launcher: runs Windows games outside Steam with UMU-Launcher (AUR)
-#   vm-curator:      terminal app for QEMU/KVM virtual machines (AUR); edk2-ovmf
+#   vm-curator-bin:  terminal app for QEMU/KVM virtual machines (AUR, prebuilt —
+#                    no Rust build; the source package is the fallback); edk2-ovmf
 #                    adds UEFI boot and swtpm a TPM, both needed for Windows 11 VMs
 step_gaming_vms() {
   local -a pkgs=(mangohud goverlay edk2-ovmf swtpm)
@@ -537,7 +538,7 @@ step_gaming_vms() {
     || warn "MangoHud/GOverlay failed to install — skipped. See the log for details."
 
   install_one_of "Faugus Launcher" faugus-launcher || true
-  install_one_of "VM Curator" vm-curator || true
+  install_one_of "VM Curator" vm-curator-bin vm-curator || true
 }
 
 # GNOME Keyring (stores share/Wi-Fi/app passwords), unlocked at login

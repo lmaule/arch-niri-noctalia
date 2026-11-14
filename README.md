@@ -92,3 +92,7 @@ Running the script again is safe: it skips anything it has already added.
 - Tested for script syntax and config edits. Not yet run end to end on real hardware.
 - Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
 - Blur needs niri 26.04+. On older versions the script skips it and adds it the next time you run the script.
+
+## License
+
+[MIT](LICENSE)

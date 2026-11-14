@@ -161,7 +161,13 @@ ensure_multilib() {
   if [[ $WANT_MULTILIB -eq 1 ]]; then
     info "Enabling the [multilib] repo"
     sudo cp /etc/pacman.conf "/etc/pacman.conf.bak.$(date +%s)"
-    sudo sed -i '/^#\s*\[multilib\]/,/^#\s*Include/ s/^#\s*//' /etc/pacman.conf
+    if grep -qE '^#\s*\[multilib\]' /etc/pacman.conf; then
+      # Normal Arch: uncomment the existing block.
+      sudo sed -i '/^#\s*\[multilib\]/,/^#\s*Include/ s/^#\s*//' /etc/pacman.conf
+    else
+      # Some setups (e.g. minimal/container pacman.conf) have no block at all.
+      printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' | sudo tee -a /etc/pacman.conf >/dev/null
+    fi
     sudo pacman -Sy
   fi
   multilib_enabled

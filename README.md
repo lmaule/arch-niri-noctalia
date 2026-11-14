@@ -1,5 +1,7 @@
 # arch-niri-noctalia
 
+[![Install test](https://github.com/lmaule/arch-niri-noctalia/actions/workflows/install-test.yml/badge.svg)](https://github.com/lmaule/arch-niri-noctalia/actions/workflows/install-test.yml)
+
 One script that turns a fresh Arch Linux install into a complete
 [niri](https://github.com/niri-wm/niri) desktop with the
 [Noctalia](https://github.com/noctalia-dev/noctalia) shell and
@@ -63,15 +65,16 @@ If no AUR helper is installed, the script installs `paru` first.
 - **niri:** installs the split config from `config/niri/` (layout and keybinds from CachyOS, see below).
   If you already have a different `~/.config/niri`, it's moved to `~/.config/niri.bak.<timestamp>` first.
   On niri older than 26.04, or with `--no-blur`, the blur file is switched off.
-- **Noctalia:** installs `config/noctalia/config.toml`, which turns on Noctalia's polkit agent and its GTK/Qt colour templates.
+- **Noctalia:** installs `config/noctalia/config.toml`, which turns on Noctalia's polkit agent and its colour templates for GTK, Qt, kitty and btop.
   Other files in `~/.config/noctalia/` are left alone.
 - **GTK defaults:** dark `adw-gtk3` and the capitaine cursor theme are set system-wide through dconf (`etc/dconf/`).
 - **App theming:** GTK apps use `adw-gtk3` and Qt apps use qt5ct/qt6ct (`QT_QPA_PLATFORMTHEME=qt5ct` in niri, which covers both).
-  Noctalia's `gtk3`, `gtk4` and `qt` colour templates are switched on, so apps follow Noctalia's colours.
+  Noctalia's `gtk3`, `gtk4`, `qt`, `kitty` and `btop` colour templates are switched on, so these apps follow Noctalia's colours (and your wallpaper, if you theme from it).
 - **Login:** greetd runs the Noctalia greeter, and any previous display manager is disabled.
 - **Keyring:** your login password unlocks GNOME Keyring automatically, and `passwd` keeps the two passwords in sync (PAM).
 - **Shell:** zsh becomes your login shell. A starter `~/.zshrc` is written if you don't have one, with the Starship *Pastel Powerline* preset and fastfetch on every new terminal.
 - **Defaults:** Helium is the default browser and Nautilus opens folders. kitty uses JetBrains Mono Nerd Font.
+- **Screenshots:** saved to `~/Pictures/Screenshots` and copied to the clipboard.
 - **Network shares:** Avahi is enabled, and `.local` hostnames resolve.
 
 Every system file the script edits is backed up first as `<file>.bak.<timestamp>`.
@@ -97,7 +100,7 @@ config/                       → copied to ~/.config/
 │       ├── misc.kdl          # environment variables, cursor, misc
 │       └── rules.kdl         # window and layer rules
 └── noctalia/
-    └── config.toml           # polkit agent, GTK/Qt colour templates
+    └── config.toml           # polkit agent, colour templates (GTK, Qt, kitty, btop)
 etc/dconf/                    → copied to /etc/dconf/ (GTK theme, cursor defaults)
 install-niri-noctalia.sh
 ```
@@ -148,7 +151,7 @@ Running the script again only replaces them if they differ from the repo, and ba
 | `Mod+scroll wheel` | Switch workspace (`+Ctrl` moves the column) |
 | `Mod+Shift+←→↑↓` | Focus another monitor (`+Ctrl` moves the column there) |
 | **System** | |
-| `Ctrl+Shift+1` / `2` / `3` | Screenshot: region / screen / window |
+| `Ctrl+Shift+1` / `2` / `3` | Screenshot: region / screen / window (saved to `~/Pictures/Screenshots`) |
 | `Mod+Shift+P` | Turn monitors off |
 | `Mod+Escape` | Get your shortcuts back from a fullscreen app that grabbed them |
 | `Ctrl+Alt+Delete` | Quit niri |
@@ -163,7 +166,8 @@ Running the script again only replaces them if they differ from the repo, and ba
 
 ## Notes
 
-- Tested for script syntax and config edits. Not yet run end to end on real hardware.
+- Every push, and every Monday, a [GitHub test](.github/workflows/install-test.yml) runs the installer in an Arch Linux container with real packages and validates the niri config with niri.
+  A container can't boot or test the login screen and GPU, so a first install on real hardware is still the final check.
 - Spotify, Claude Desktop, Helium and ProtonPlus come from the AUR. The AUR packages are maintained by the community, not by the app developers.
 - Blur needs niri 26.04+. On older versions the script skips it and adds it the next time you run the script.
 

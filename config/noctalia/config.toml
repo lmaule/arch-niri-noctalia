@@ -5,8 +5,8 @@
 [shell]
 polkit_agent = true  # password prompts for apps that need admin rights
 
-# Colour GTK and Qt apps to match Noctalia (same as Settings -> Templates).
-# Run `noctalia theme --list-templates` to see others (e.g. "kitty", "btop").
+# Colour GTK, Qt, kitty and btop to match Noctalia (same as Settings -> Templates).
+# Run `noctalia theme --list-templates` to see the others.
 [theme.templates]
 enable_builtin_templates = true
-builtin_ids = ["gtk3", "gtk4", "qt"]
+builtin_ids = ["gtk3", "gtk4", "qt", "kitty", "btop"]

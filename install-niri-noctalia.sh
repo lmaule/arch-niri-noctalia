@@ -175,6 +175,13 @@ has_amd_gpu() {
   return 1
 }
 
+# Enable a systemd service; start it now too if systemd is running (it isn't
+# in a container or chroot, where `--now` would fail).
+svc_enable() {
+  if [[ -d /run/systemd/system ]]; then sudo systemctl enable --now "$@"
+  else sudo systemctl enable "$@"; fi
+}
+
 # version_ge A B  ->  true if A >= B
 version_ge() { printf '%s\n%s\n' "$2" "$1" | sort -V -C; }
 
@@ -268,7 +275,7 @@ step_amd() {
   # LACT: GPU monitoring, fan curves, power limits and overclocking.
   info "Installing LACT (GPU control panel)"
   sudo pacman -S --needed --noconfirm lact
-  sudo systemctl enable --now lactd.service
+  svc_enable lactd.service
 
   mesa_ver=$(pacman -Q mesa | awk '{print $2}' | sed -E 's/^[0-9]+://; s/-.*//')
   if ! version_ge "$mesa_ver" 25.0; then
@@ -411,7 +418,7 @@ step_files() {
   xdg-mime default org.gnome.Nautilus.desktop inode/directory
 
   # Avahi: lets Nautilus's "Network" view find shares and printers on the LAN.
-  sudo systemctl enable --now avahi-daemon.service
+  svc_enable avahi-daemon.service
 
   # nss-mdns: resolve *.local hostnames (e.g. smb://nas.local).
   if ! grep -qE '^hosts:.*mdns' /etc/nsswitch.conf; then
@@ -612,6 +619,18 @@ step_config() {
       mv "$noctalia_dir/$old" "$noctalia_dir/$old.bak.$(date +%Y%m%d-%H%M%S)"
     fi
   done
+
+  # Folder for niri screenshots (screenshot-path in cfg/misc.kdl).
+  mkdir -p "$HOME/Pictures/Screenshots"
+
+  # btop: Noctalia's btop colour template only switches the theme if btop.conf
+  # exists, and btop only creates it on first launch — so start one.
+  if [[ ! -f $cfg_home/btop/btop.conf ]]; then
+    info "Creating ~/.config/btop/btop.conf with Noctalia's colours"
+    mkdir -p "$cfg_home/btop"
+    printf '# Created by install-niri-noctalia.sh; btop adds its other settings on first run.\ncolor_theme = "noctalia"\n' \
+      > "$cfg_home/btop/btop.conf"
+  fi
 
   if command -v niri >/dev/null && ! niri validate -c "$niri_dir/config.kdl"; then
     warn "niri reports a config error in $niri_dir — see the log. Your previous config is in $niri_dir.bak.*"

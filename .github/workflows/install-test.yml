@@ -1,0 +1,74 @@
+# Runs the real installer in an Arch Linux container, with real pacman and the
+# real AUR, to catch renamed/removed packages and broken config before a real
+# install does. Also validates the installed niri config with niri itself.
+#
+# What a container can't test: booting, the login screen actually appearing,
+# and the GPU. Services are enabled but not started (no systemd running).
+name: Install test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 1"   # every Monday, to catch package changes upstream
+  workflow_dispatch:
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    timeout-minutes: 120
+    steps:
+      - name: Prepare the Arch container
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git sudo
+          # The installer refuses to run as root, like on a real system.
+          useradd -m tester
+          echo 'tester ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/tester
+
+      - uses: actions/checkout@v4
+
+      - name: Copy the repo to the test user's home
+        run: |
+          cp -r "$GITHUB_WORKSPACE" /home/tester/arch-niri-noctalia
+          chown -R tester: /home/tester/arch-niri-noctalia
+
+      - name: Run the installer
+        # --amd-gpu: there's no GPU here, but this still checks the AMD package names.
+        run: |
+          cd /home/tester/arch-niri-noctalia
+          sudo -u tester -H ./install-niri-noctalia.sh --yes --verbose --amd-gpu
+
+      - name: Validate the installed niri config with niri
+        run: sudo -u tester -H niri validate -c /home/tester/.config/niri/config.kdl
+
+      - name: Check the installed files
+        run: |
+          set -x
+          h=/home/tester
+          test -f $h/.config/niri/cfg/keybinds.kdl
+          test -f $h/.config/noctalia/config.toml
+          test -f $h/.config/btop/btop.conf
+          test -f $h/.config/kitty/kitty.conf
+          test -f $h/.config/starship.toml
+          test -d $h/Pictures/Screenshots
+          grep -q 'pam_gnome_keyring.so' /etc/pam.d/greetd
+          grep -q 'noctalia-greeter-session' /etc/greetd/config.toml
+          getent passwd tester | grep -q '/usr/bin/zsh$'
+          for p in niri noctalia noctalia-greeter kitty zsh nautilus steam discord \
+                   spotify helium-browser-bin protonplus claude-desktop lact; do
+            pacman -Q "$p"
+          done
+
+      - name: Show warnings from the summary
+        if: always()
+        run: grep -h 'WARNING' /home/tester/arch-niri-noctalia-install.log || echo "No warnings."
+
+      - name: Keep the install log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-log
+          path: /home/tester/arch-niri-noctalia-install.log*
+          if-no-files-found: ignore

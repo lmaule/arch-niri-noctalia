@@ -1,0 +1,677 @@
+#!/usr/bin/env bash
+# Arch desktop setup: niri + Noctalia shell + Noctalia greeter, plus drivers, apps and shell config.
+#
+# Usage:  ./install-niri-noctalia.sh [--git] [--no-greeter] [--no-blur] [--amd-gpu|--no-amd-gpu] [--yes]
+#   --git         use the -git (development) packages for noctalia / noctalia-greeter
+#   --no-greeter  skip greetd + noctalia-greeter setup
+#   --no-blur     skip the blur window/layer rules (they need niri >= 26.04)
+#   --amd-gpu     force-install AMD GPU drivers (default: auto-detect an AMD card)
+#   --no-amd-gpu  skip AMD GPU drivers
+#   --yes         don't ask for confirmation
+#
+# Run as your normal user (NOT root). sudo is used where needed.
+
+set -euo pipefail
+
+USE_GIT=0
+WITH_GREETER=1
+WITH_BLUR=1
+AMD_GPU=auto
+ASSUME_YES=0
+for arg in "$@"; do
+  case "$arg" in
+    --git) USE_GIT=1 ;;
+    --no-greeter) WITH_GREETER=0 ;;
+    --no-blur) WITH_BLUR=0 ;;
+    --amd-gpu) AMD_GPU=yes ;;
+    --no-amd-gpu) AMD_GPU=no ;;
+    --yes|-y) ASSUME_YES=1 ;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
+
+info() { printf '\e[1;34m==>\e[0m %s\n' "$*"; }
+warn() { printf '\e[1;33m==> WARNING:\e[0m %s\n' "$*"; }
+die()  { printf '\e[1;31m==> ERROR:\e[0m %s\n' "$*" >&2; exit 1; }
+
+confirm() {
+  [[ $ASSUME_YES -eq 1 ]] && return 0
+  read -rp "$1 [y/N] " r
+  [[ $r =~ ^[Yy]$ ]]
+}
+
+# --- Sanity checks -----------------------------------------------------------
+[[ $EUID -eq 0 ]] && die "Run this as your normal user, not root (AUR builds refuse root)."
+command -v pacman >/dev/null || die "pacman not found — this script is for Arch-based systems."
+command -v sudo   >/dev/null || die "sudo is required."
+
+SHELL_PKG=noctalia
+GREETER_PKG=noctalia-greeter
+if [[ $USE_GIT -eq 1 ]]; then
+  SHELL_PKG=noctalia-git
+  GREETER_PKG=noctalia-greeter-git
+fi
+
+info "Will install: niri, $SHELL_PKG$([[ $WITH_GREETER -eq 1 ]] && echo ", greetd, $GREETER_PKG")"
+confirm "Continue?" || exit 0
+
+# --- System update + base tools ----------------------------------------------
+info "Updating system and installing base tools"
+sudo pacman -Syu --needed --noconfirm base-devel git
+
+# --- AUR helper --------------------------------------------------------------
+AUR_HELPER=""
+ensure_aur_helper() {
+  [[ -n $AUR_HELPER ]] && return
+  for h in paru yay; do
+    if command -v "$h" >/dev/null; then AUR_HELPER=$h; return; fi
+  done
+  info "No AUR helper found — installing paru-bin"
+  local tmp; tmp=$(mktemp -d)
+  git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$tmp/paru-bin"
+  (cd "$tmp/paru-bin" && makepkg -si --noconfirm)
+  rm -rf "$tmp"
+  AUR_HELPER=paru
+}
+
+# Install from official repos if available, otherwise from the AUR.
+install_pkg() {
+  local pkg=$1
+  if pacman -Qq "$pkg" &>/dev/null; then
+    info "$pkg already installed"
+  elif pacman -Si "$pkg" &>/dev/null; then
+    info "Installing $pkg from official repos"
+    sudo pacman -S --needed --noconfirm "$pkg"
+  else
+    ensure_aur_helper
+    info "Installing $pkg from the AUR via $AUR_HELPER"
+    "$AUR_HELPER" -S --needed --noconfirm "$pkg"
+  fi
+}
+
+# install_one_of "Label" pkg1 pkg2 ...
+# Installs the first candidate found (official repos first, then the AUR).
+# Returns 1 (without aborting) if none of them exist.
+install_one_of() {
+  local label=$1 p; shift
+  for p in "$@"; do
+    if pacman -Qq "$p" &>/dev/null; then info "$label already installed ($p)"; return 0; fi
+  done
+  for p in "$@"; do
+    if pacman -Si "$p" &>/dev/null; then
+      info "Installing $label ($p from official repos)"
+      sudo pacman -S --needed --noconfirm "$p"; return 0
+    fi
+  done
+  ensure_aur_helper
+  for p in "$@"; do
+    if "$AUR_HELPER" -Si "$p" &>/dev/null; then
+      info "Installing $label ($p from the AUR)"
+      "$AUR_HELPER" -S --needed --noconfirm "$p"; return 0
+    fi
+  done
+  warn "Couldn't find a package for $label (tried: $*) — skipping."
+  return 1
+}
+
+multilib_enabled() { grep -qE '^\s*\[multilib\]' /etc/pacman.conf; }
+
+# Enable the [multilib] repo (32-bit libraries for Steam/Proton/Wine).
+ensure_multilib() {
+  multilib_enabled && return 0
+  if confirm "Enable the [multilib] repo (32-bit libraries, needed by Steam/Proton)?"; then
+    sudo cp /etc/pacman.conf "/etc/pacman.conf.bak.$(date +%s)"
+    sudo sed -i '/^#\s*\[multilib\]/,/^#\s*Include/ s/^#\s*//' /etc/pacman.conf
+    sudo pacman -Sy
+  fi
+  multilib_enabled
+}
+
+# --- AMD GPU drivers (RX 9000 / RDNA 4, e.g. RX 9070 XT) ---------------------
+has_amd_gpu() {
+  local v
+  for v in /sys/class/drm/card*/device/vendor; do
+    [[ -r $v && $(<"$v") == 0x1002 ]] && return 0
+  done
+  return 1
+}
+
+# version_ge A B  ->  true if A >= B
+version_ge() { printf '%s\n%s\n' "$2" "$1" | sort -V -C; }
+
+if [[ $AMD_GPU == auto ]]; then
+  has_amd_gpu && AMD_GPU=yes || AMD_GPU=no
+fi
+
+if [[ $AMD_GPU == yes ]]; then
+  info "Installing AMD GPU drivers (amdgpu kernel driver + Mesa RADV/radeonsi)"
+
+  # Kernel: RDNA 4 needs 6.13+, 6.14+ recommended.
+  KVER=$(uname -r | grep -oE '^[0-9]+\.[0-9]+')
+  if ! version_ge "$KVER" 6.13; then
+    warn "Running kernel $KVER is too old for RX 9000 cards (need 6.13+)."
+    warn "Run 'sudo pacman -Syu' (or install the 'linux' package) and reboot."
+  fi
+
+  # 32-bit drivers (Steam, Wine/Proton) need the multilib repo.
+  ensure_multilib || true
+
+  # Firmware: newer Arch splits AMD firmware into linux-firmware-amdgpu.
+  FW_PKG=linux-firmware
+  pacman -Si linux-firmware-amdgpu &>/dev/null && FW_PKG=linux-firmware-amdgpu
+
+  AMD_PKGS=("$FW_PKG" mesa vulkan-radeon vulkan-icd-loader libva-utils vulkan-tools mesa-utils
+            rocm-smi-lib)  # rocm-smi-lib: GPU usage/temps in btop
+  if multilib_enabled; then
+    AMD_PKGS+=(lib32-mesa lib32-vulkan-radeon lib32-vulkan-icd-loader)
+  fi
+  sudo pacman -S --needed --noconfirm "${AMD_PKGS[@]}"
+
+  # AMDVLK is discontinued and can override RADV — remove it if present.
+  for p in amdvlk lib32-amdvlk; do
+    if pacman -Qq "$p" &>/dev/null; then
+      warn "$p is installed (discontinued AMD Vulkan driver; RADV is better)."
+      if confirm "Remove $p?"; then sudo pacman -Rns --noconfirm "$p"; fi
+    fi
+  done
+
+  # LACT: GPU monitoring, fan curves, power limits and overclocking.
+  info "Installing LACT (GPU control panel)"
+  sudo pacman -S --needed --noconfirm lact
+  sudo systemctl enable --now lactd.service
+
+  MESA_VER=$(pacman -Q mesa | awk '{print $2}' | sed -E 's/^[0-9]+://; s/-.*//')
+  if ! version_ge "$MESA_VER" 25.0; then
+    warn "Mesa $MESA_VER is too old for RX 9000 cards (need 25.0+). Update your system."
+  fi
+  info "AMD drivers installed (kernel $KVER, Mesa $MESA_VER). Verify after reboot with: vulkaninfo --summary"
+elif [[ $AMD_GPU == no ]]; then
+  info "No AMD GPU detected / --no-amd-gpu given — skipping AMD drivers"
+fi
+
+# --- niri + useful companions ------------------------------------------------
+info "Installing niri and companion packages"
+install_pkg niri
+sudo pacman -S --needed --noconfirm \
+  xdg-desktop-portal-gnome xdg-desktop-portal-gtk \
+  xwayland-satellite kitty fuzzel \
+  btop fastfetch hwdata \
+  pipewire wireplumber pipewire-pulse \
+  polkit upower
+
+# --- zsh as the default shell ------------------------------------------------
+info "Installing zsh"
+sudo pacman -S --needed --noconfirm \
+  zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting starship
+
+# Starter ~/.zshrc (skipped if you already have one). Without it, zsh opens a
+# first-run setup wizard the first time you start it.
+if [[ ! -f $HOME/.zshrc ]]; then
+  info "Creating a starter ~/.zshrc"
+  cat > "$HOME/.zshrc" <<'EOF'
+# ~/.zshrc — created by install-niri-noctalia.sh
+
+# History
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE
+
+# Behaviour
+setopt AUTO_CD INTERACTIVE_COMMENTS
+bindkey -e                                   # emacs-style keys (Ctrl+A, Ctrl+E, ...)
+bindkey '^[[H' beginning-of-line             # Home
+bindkey '^[[F' end-of-line                   # End
+bindkey '^[[3~' delete-char                  # Delete
+bindkey '^[[1;5C' forward-word               # Ctrl+Right
+bindkey '^[[1;5D' backward-word              # Ctrl+Left
+
+# Tab completion (menu, case-insensitive)
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+
+# Aliases
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias grep='grep --color=auto'
+
+# Plugins (syntax highlighting must be sourced last)
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+EOF
+fi
+
+# Starship prompt + fastfetch on every new terminal. Appended separately so they
+# are also added to an existing ~/.zshrc (each only once).
+if ! grep -qF 'starship init zsh' "$HOME/.zshrc"; then
+  info "Enabling the Starship prompt in ~/.zshrc"
+  printf '\n# Starship prompt (config: ~/.config/starship.toml)\neval "$(starship init zsh)"\n' >> "$HOME/.zshrc"
+fi
+if ! grep -qE '^[^#]*fastfetch' "$HOME/.zshrc"; then
+  info "Showing fastfetch when a terminal opens"
+  printf '\n# System info when a terminal opens (interactive shells only)\n[[ -o interactive ]] && command -v fastfetch >/dev/null && fastfetch\n' >> "$HOME/.zshrc"
+fi
+
+# Starship theme: the Pastel Powerline preset (needs a Nerd Font — kitty uses
+# JetBrainsMono Nerd Font, set up below). Skipped if you already have a config.
+STARSHIP_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
+if [[ ! -f $STARSHIP_CFG ]]; then
+  info "Applying the Starship 'Pastel Powerline' preset ($STARSHIP_CFG)"
+  mkdir -p "$(dirname "$STARSHIP_CFG")"
+  starship preset pastel-powerline -o "$STARSHIP_CFG"
+else
+  info "$STARSHIP_CFG already exists — leaving your Starship config alone"
+fi
+
+# Make zsh your login shell (takes effect next time you log in).
+if [[ $(getent passwd "$USER" | cut -d: -f7) != /usr/bin/zsh ]]; then
+  info "Setting zsh as the default shell for $USER"
+  sudo chsh -s /usr/bin/zsh "$USER"
+fi
+
+# --- Fonts -------------------------------------------------------------------
+#   noto-fonts:              main UI font, wide language coverage
+#   noto-fonts-cjk:          Chinese / Japanese / Korean
+#   noto-fonts-emoji:        colour emoji (Noctalia's launcher has an emoji picker)
+#   ttf-jetbrains-mono-nerd: coding font with Nerd Font icons, used for kitty
+#   ttf-nerd-fonts-symbols:  icon fallback so any font can show Nerd Font glyphs
+info "Installing fonts"
+sudo pacman -S --needed --noconfirm \
+  noto-fonts noto-fonts-cjk noto-fonts-emoji \
+  ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono
+fc-cache -f >/dev/null
+
+# Use JetBrains Mono Nerd Font in kitty, unless you've already picked a font.
+KITTY_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/kitty.conf"
+if ! grep -qsE '^\s*font_family\s' "$KITTY_CFG"; then
+  info "Setting kitty's font to JetBrainsMono Nerd Font ($KITTY_CFG)"
+  mkdir -p "$(dirname "$KITTY_CFG")"
+  printf '\n# Added by install-niri-noctalia.sh\nfont_family JetBrainsMono Nerd Font\nfont_size 11.0\n' >> "$KITTY_CFG"
+fi
+
+# --- File manager, user dirs, MTP & network shares ---------------------------
+info "Installing Nautilus, XDG user dirs, MTP and network share support"
+sudo pacman -S --needed --noconfirm \
+  nautilus \
+  xdg-user-dirs xdg-utils \
+  gvfs gvfs-mtp gvfs-smb gvfs-nfs gvfs-dnssd \
+  avahi nss-mdns
+
+# Optional extras — only installed if your repos have them.
+#   gvfs-wsdd:          discover Windows (SMB) machines on the network
+#   gvfs-afc:           iPhone/iPad file access
+#   gvfs-gphoto2:       cameras (PTP)
+#   ffmpegthumbnailer:  video thumbnails in Nautilus
+for p in gvfs-wsdd gvfs-afc gvfs-gphoto2 ffmpegthumbnailer; do
+  if pacman -Si "$p" &>/dev/null; then
+    sudo pacman -S --needed --noconfirm "$p"
+  fi
+done
+
+# Create ~/Desktop, ~/Documents, ~/Downloads, ~/Music, ~/Pictures, ~/Videos, ...
+xdg-user-dirs-update
+
+# Make Nautilus the default app for opening folders.
+xdg-mime default org.gnome.Nautilus.desktop inode/directory
+
+# Avahi: lets Nautilus's "Network" view find shares and printers on the LAN.
+sudo systemctl enable --now avahi-daemon.service
+
+# nss-mdns: resolve *.local hostnames (e.g. smb://nas.local).
+if ! grep -qE '^hosts:.*mdns' /etc/nsswitch.conf; then
+  info "Enabling .local hostname resolution in /etc/nsswitch.conf"
+  sudo cp /etc/nsswitch.conf "/etc/nsswitch.conf.bak.$(date +%s)"
+  if grep -qE '^hosts:.*\bresolve\b' /etc/nsswitch.conf; then
+    sudo sed -i -E '/^hosts:/ s/\bresolve\b/mdns_minimal [NOTFOUND=return] resolve/' /etc/nsswitch.conf
+  else
+    sudo sed -i -E '/^hosts:/ s/\bdns\b/mdns_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
+  fi
+fi
+
+# Avahi and systemd-resolved both want port 5353 for mDNS — turn resolved's off.
+if systemctl is-active --quiet systemd-resolved; then
+  sudo mkdir -p /etc/systemd/resolved.conf.d
+  printf '[Resolve]\nMulticastDNS=no\n' | sudo tee /etc/systemd/resolved.conf.d/no-mdns.conf >/dev/null
+  sudo systemctl restart systemd-resolved
+fi
+
+# --- Helium browser (AUR, community-maintained) ------------------------------
+# helium-browser-bin repackages the official Linux release (verified on the AUR).
+if ! install_one_of "Helium browser" helium-browser-bin; then
+  warn "Get the AppImage from https://github.com/imputnet/helium-linux/releases/latest"
+fi
+
+# Make Helium the default browser. The desktop file name depends on the package
+# (upstream recommends helium.desktop), so find whichever one is installed.
+HELIUM_DESKTOP=""
+for d in helium-browser.desktop helium.desktop net.imput.helium.desktop; do
+  if [[ -f /usr/share/applications/$d ]]; then HELIUM_DESKTOP=$d; break; fi
+done
+if [[ -z $HELIUM_DESKTOP ]]; then
+  HELIUM_DESKTOP=$(find /usr/share/applications -maxdepth 1 -iname '*helium*.desktop' -printf '%f\n' 2>/dev/null | head -n1)
+fi
+
+if [[ -n $HELIUM_DESKTOP ]]; then
+  info "Setting Helium ($HELIUM_DESKTOP) as the default browser"
+  for mime in x-scheme-handler/http x-scheme-handler/https text/html \
+              application/xhtml+xml x-scheme-handler/about x-scheme-handler/unknown; do
+    xdg-mime default "$HELIUM_DESKTOP" "$mime"
+  done
+  xdg-settings set default-web-browser "$HELIUM_DESKTOP" 2>/dev/null || true
+else
+  warn "Helium's desktop file not found — default browser not changed."
+fi
+
+# --- Apps: Steam, Discord, Spotify, ProtonPlus, Claude Desktop (no Flatpak) --
+# Steam (official, multilib). Needs the 32-bit graphics drivers too.
+if ensure_multilib; then
+  STEAM_PKGS=(steam)
+  [[ $AMD_GPU == yes ]] && STEAM_PKGS+=(lib32-mesa lib32-vulkan-radeon)
+  info "Installing Steam"
+  sudo pacman -S --needed --noconfirm "${STEAM_PKGS[@]}"
+else
+  warn "[multilib] is not enabled — skipping Steam."
+fi
+
+# Discord (official Arch repo).
+install_one_of "Discord" discord || true
+
+# Spotify: spotify-launcher (official Arch repo, installs/updates Spotify's own
+# client), falling back to the AUR 'spotify' package.
+install_one_of "Spotify" spotify-launcher spotify || true
+
+# ProtonPlus: manages Proton-GE / Wine-GE etc. for Steam, Lutris, Heroic (AUR).
+install_one_of "ProtonPlus" protonplus || true
+
+# Claude Desktop: the AUR package repackages Anthropic's official Linux build
+# (downloaded from downloads.claude.ai); the AUR packaging itself is community-run.
+install_one_of "Claude Desktop" claude-desktop || true
+
+# --- GNOME Keyring (stores share/Wi-Fi/app passwords), unlocked at login -----
+info "Installing GNOME Keyring"
+sudo pacman -S --needed --noconfirm gnome-keyring libsecret seahorse
+
+# Add a pam_gnome_keyring line after the last line of the given type
+# (auth/session/password) in a PAM file, unless it's already there.
+pam_add() {
+  local file=$1 type=$2 line=$3 tmp
+  [[ -f $file ]] || return 0
+  grep -qE "^\s*${type}\s+.*pam_gnome_keyring\.so" "$file" && return 0
+  tmp=$(mktemp)
+  awk -v t="$type" -v l="$line" '
+    { lines[NR] = $0; if ($1 == t) last = NR }
+    END {
+      for (i = 1; i <= NR; i++) { print lines[i]; if (i == last) print l }
+      if (!last) print l
+    }
+  ' "$file" > "$tmp"
+  sudo install -m 644 "$tmp" "$file"
+  rm -f "$tmp"
+}
+
+# Which PAM service handles your login: greetd (greeter) or login (TTY).
+if [[ $WITH_GREETER -eq 1 ]]; then
+  sudo pacman -S --needed --noconfirm greetd   # provides /etc/pam.d/greetd
+  LOGIN_PAM=/etc/pam.d/greetd
+else
+  LOGIN_PAM=/etc/pam.d/login
+fi
+
+info "Configuring PAM so your login password unlocks the keyring ($LOGIN_PAM)"
+for f in "$LOGIN_PAM" /etc/pam.d/passwd; do
+  [[ -f $f ]] && sudo cp "$f" "$f.bak.$(date +%s)"
+done
+# On login: grab the password (auth) and unlock/create the "login" keyring (session).
+pam_add "$LOGIN_PAM" auth    "auth       optional     pam_gnome_keyring.so"
+pam_add "$LOGIN_PAM" session "session    optional     pam_gnome_keyring.so auto_start"
+# On `passwd`: change the keyring password too, so they stay the same.
+pam_add /etc/pam.d/passwd password "password   optional     pam_gnome_keyring.so"
+
+# --- Noctalia shell ----------------------------------------------------------
+install_pkg "$SHELL_PKG"
+
+# Noctalia's built-in polkit agent shows the password prompt when an app needs
+# admin rights (LACT, mounting drives, ...). It's off by default, and niri has
+# no agent of its own. Noctalia merges every *.toml in ~/.config/noctalia/.
+NOCTALIA_CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/noctalia"
+if ! grep -qsE '^\s*polkit_agent\s*=' "$NOCTALIA_CFG_DIR"/*.toml; then
+  info "Enabling Noctalia's polkit agent ($NOCTALIA_CFG_DIR/polkit.toml)"
+  mkdir -p "$NOCTALIA_CFG_DIR"
+  printf '[shell]\npolkit_agent = true  # password prompts for apps that need admin rights\n' \
+    > "$NOCTALIA_CFG_DIR/polkit.toml"
+fi
+
+# --- niri config: autostart Noctalia ----------------------------------------
+NIRI_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/niri/config.kdl"
+if [[ ! -f $NIRI_CFG ]]; then
+  info "Creating default niri config at $NIRI_CFG"
+  mkdir -p "$(dirname "$NIRI_CFG")"
+  if [[ -f /usr/share/doc/niri/default-config.kdl ]]; then
+    cp /usr/share/doc/niri/default-config.kdl "$NIRI_CFG"
+  else
+    : > "$NIRI_CFG"
+  fi
+fi
+
+# Use kitty as the terminal (niri's default config launches alacritty on Mod+T).
+if grep -q 'alacritty' "$NIRI_CFG"; then
+  info "Switching the terminal in $NIRI_CFG from alacritty to kitty"
+  cp "$NIRI_CFG" "$NIRI_CFG.bak.$(date +%s)"
+  sed -i -E 's/"alacritty"/"kitty"/g; s/(hotkey-overlay-title="[^"]*)alacritty/\1kitty/g' "$NIRI_CFG"
+fi
+
+MARKER="// >>> noctalia (added by install-niri-noctalia.sh)"
+if grep -qF "$MARKER" "$NIRI_CFG"; then
+  info "niri config already has the Noctalia settings — skipping"
+else
+  info "Adding Noctalia autostart, rules and keybinds to $NIRI_CFG"
+  cp "$NIRI_CFG" "$NIRI_CFG.bak.$(date +%s)"
+
+  # Keybinds recommended by Noctalia's niri docs (key -> action).
+  NOCTALIA_BINDS=$(cat <<'EOF'
+    // >>> noctalia keybinds
+    Mod+Space { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+S { spawn-sh "noctalia msg panel-toggle control-center"; }
+    Mod+Shift+Comma { spawn-sh "noctalia msg settings-toggle"; }
+    Alt+Tab { spawn-sh "noctalia msg window-switcher hold"; }
+    Alt+Shift+Tab { spawn-sh "noctalia msg window-switcher hold reverse"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "noctalia msg volume-up"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "noctalia msg volume-down"; }
+    XF86AudioMute allow-when-locked=true { spawn-sh "noctalia msg volume-mute"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "noctalia msg brightness-up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "noctalia msg brightness-down"; }
+    // Replace niri defaults that call tools this setup doesn't install
+    // (swaylock, playerctl) with Noctalia's own commands.
+    Super+Alt+L hotkey-overlay-title="Lock the Screen" { spawn-sh "noctalia msg session lock"; }
+    XF86AudioMicMute allow-when-locked=true { spawn-sh "noctalia msg mic-mute"; }
+    XF86AudioPlay allow-when-locked=true { spawn-sh "noctalia msg media toggle"; }
+    XF86AudioStop allow-when-locked=true { spawn-sh "noctalia msg media stop"; }
+    XF86AudioPrev allow-when-locked=true { spawn-sh "noctalia msg media previous"; }
+    XF86AudioNext allow-when-locked=true { spawn-sh "noctalia msg media next"; }
+    // <<< noctalia keybinds
+EOF
+)
+  BIND_KEYS=$(printf '%s\n' "$NOCTALIA_BINDS" | awk '$1 !~ /^\/\// {print $1}' | tr '\n' ' ')
+
+  # 1) Comment out existing binds that use the same keys (niri rejects duplicates),
+  #    including multi-line bind bodies.
+  # 2) Insert the Noctalia binds right after the first `binds {` line.
+  tmp=$(mktemp)
+  awk -v keys="$BIND_KEYS" -v binds="$NOCTALIA_BINDS" '
+    BEGIN { n = split(keys, k, " "); for (i = 1; i <= n; i++) want[tolower(k[i])] = 1 }
+    function depth_delta(s,   o, c) { o = gsub(/\{/, "{", s); c = gsub(/\}/, "}", s); return o - c }
+    commenting { print "// [noctalia] " $0; d += depth_delta($0); if (d <= 0) commenting = 0; next }
+    in_binds && !/^[[:space:]]*\/\// {
+      key = $1; sub(/\{.*/, "", key)
+      if (tolower(key) in want) {
+        print "// [noctalia] " $0
+        d = depth_delta($0); if (d > 0) commenting = 1
+        next
+      }
+    }
+    !inserted && /^[[:space:]]*binds[[:space:]]*\{/ { print; print binds; inserted = 1; in_binds = 1; bd = 1; next }
+    in_binds { bd += depth_delta($0); if (bd <= 0) in_binds = 0 }
+    { print }
+    END { if (!inserted) { print "\nbinds {"; print binds; print "}" } }
+  ' "$NIRI_CFG" > "$tmp"
+  mv "$tmp" "$NIRI_CFG"
+
+  # Autostart + window rules from Noctalia's niri docs.
+  cat >> "$NIRI_CFG" <<EOF
+
+$MARKER
+spawn-at-startup "noctalia"
+
+window-rule {
+    geometry-corner-radius 20
+    clip-to-geometry true
+}
+
+// Floating Noctalia settings window
+window-rule {
+    match app-id="dev.noctalia.Noctalia"
+    open-floating true
+    default-column-width { fixed 1080; }
+    default-window-height { fixed 920; }
+}
+
+// Allows notification actions and window activation from Noctalia
+debug {
+    honor-xdg-activation-with-invalid-serial
+}
+// <<< noctalia
+EOF
+
+  # Don't run waybar alongside Noctalia.
+  sed -i -E 's|^([[:space:]]*spawn-at-startup[[:space:]]+"waybar".*)$|// [noctalia] \1|' "$NIRI_CFG"
+
+fi
+
+# --- Blur (needs niri >= 26.04; older versions reject these rules) -----------
+BLUR_MARKER="// >>> noctalia blur (added by install-niri-noctalia.sh)"
+NIRI_VER=$(niri --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -n1 || true)
+if [[ $WITH_BLUR -eq 0 ]]; then
+  info "Skipping blur settings (--no-blur)"
+elif grep -qF "$BLUR_MARKER" "$NIRI_CFG"; then
+  info "niri config already has the Noctalia blur settings — skipping"
+elif [[ -z $NIRI_VER ]] || ! printf '26.04\n%s\n' "$NIRI_VER" | sort -V -C; then
+  warn "niri ${NIRI_VER:-(unknown version)} is older than 26.04 — skipping blur settings."
+  warn "Re-run this script after upgrading niri to add them."
+else
+  info "Adding Noctalia blur settings (niri $NIRI_VER)"
+  cat >> "$NIRI_CFG" <<'EOF'
+
+// >>> noctalia blur (added by install-niri-noctalia.sh)
+/* Apps: blur them all without xray so it looks more realistic. */
+window-rule {
+    background-effect {
+        blur true
+        xray false
+    }
+}
+
+/*
+  Noctalia: disable xray on all its surfaces so it looks more realistic.
+  Noctalia publishes blur regions automatically when ext-background-effects is available.
+*/
+layer-rule {
+    match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"
+    background-effect {
+        xray false
+        // blur false
+    }
+}
+
+/* Enable blur on Noctalia's window switcher and disable xray. */
+layer-rule {
+    match namespace="noctalia-window-switcher"
+    background-effect {
+        blur true
+        xray false
+    }
+}
+
+/* Fine-tune the blur effect globally. */
+blur {
+    passes 2        // more passes = stronger blur (default: 3)
+    offset 3.0      // sample distance per pass (default: 3.0)
+    noise 0.03      // grain overlay (default: 0.02)
+    saturation 1.0  // color saturation boost (default: 1.5)
+}
+
+/*
+  To turn Noctalia's blur off entirely, uncomment this
+  (removing the rules above is not enough):
+layer-rule {
+    match namespace="^noctalia-"
+    background-effect {
+        blur false
+    }
+}
+*/
+// <<< noctalia blur
+EOF
+fi
+
+if command -v niri >/dev/null && ! niri validate -c "$NIRI_CFG"; then
+  warn "niri reports a config error — check $NIRI_CFG (a backup was saved next to it)."
+fi
+
+# --- Greeter (greetd + noctalia-greeter) -------------------------------------
+if [[ $WITH_GREETER -eq 1 ]]; then
+  sudo pacman -S --needed --noconfirm greetd
+  install_pkg "$GREETER_PKG"
+
+  GREETER_CMD=$(command -v noctalia-greeter-session || echo /usr/bin/noctalia-greeter-session)
+  GREETD_CFG=/etc/greetd/config.toml
+
+  info "Configuring greetd ($GREETD_CFG)"
+  sudo mkdir -p /etc/greetd
+  [[ -f $GREETD_CFG ]] && sudo cp "$GREETD_CFG" "$GREETD_CFG.bak.$(date +%s)"
+
+  # Replace only the [default_session] section, keep everything else (e.g. [terminal]).
+  tmp=$(mktemp)
+  if [[ -f $GREETD_CFG ]]; then
+    sudo awk '
+      /^\s*\[default_session\]/ { skip=1; next }
+      /^\s*\[/                  { skip=0 }
+      !skip
+    ' "$GREETD_CFG" > "$tmp"
+  fi
+  grep -q '^\s*\[terminal\]' "$tmp" || printf '[terminal]\nvt = 1\n\n' >> "$tmp"
+  cat >> "$tmp" <<EOF
+
+[default_session]
+command = "$GREETER_CMD"
+user = "greeter"
+EOF
+  sudo install -m 644 "$tmp" "$GREETD_CFG"
+  rm -f "$tmp"
+
+  info "Setting up greeter state/appearance sync"
+  if command -v noctalia-greeter-apply-appearance >/dev/null; then
+    sudo noctalia-greeter-apply-appearance --setup-system || warn "appearance setup failed (non-fatal)"
+  fi
+
+  # Disable whatever display manager is currently active.
+  if [[ -L /etc/systemd/system/display-manager.service ]]; then
+    current_dm=$(basename "$(readlink -f /etc/systemd/system/display-manager.service)")
+    if [[ $current_dm != greetd.service ]]; then
+      info "Disabling current display manager: $current_dm"
+      sudo systemctl disable "$current_dm"
+    fi
+  fi
+
+  info "Enabling greetd"
+  sudo systemctl enable greetd.service
+fi
+
+echo
+info "Done!"
+if [[ $WITH_GREETER -eq 1 ]]; then
+  echo "    Reboot to get the Noctalia greeter, then pick the niri session."
+else
+  echo "    Log out and start niri from a TTY with:  niri-session"
+fi

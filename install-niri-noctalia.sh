@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Arch desktop setup: niri + Noctalia shell + Noctalia greeter, plus drivers, apps and shell config.
+# Arch desktop setup: Umbriel + Noctalia shell + Noctalia greeter, plus drivers, apps and shell config.
 #
 # Usage:  ./install-niri-noctalia.sh [options]
 #   --git         use the -git (development) packages for noctalia / noctalia-greeter
 #   --no-greeter  skip greetd + noctalia-greeter setup
-#   --no-blur     skip the blur window/layer rules (they need niri >= 26.04)
+#   --no-blur     leave out the blur settings (cfg/blur.toml)
 #   --amd-gpu     force-install AMD GPU drivers (default: auto-detect an AMD card)
 #   --no-amd-gpu  skip AMD GPU drivers
 #   --yes         don't ask questions (answer yes to everything, never reboot)
@@ -125,7 +125,7 @@ command -v sudo   >/dev/null || die "sudo is required."
 
 # Config files live next to this script (config/ and etc/ in the repo).
 REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
-[[ -d $REPO_DIR/config/niri && -d $REPO_DIR/etc/dconf ]] || die \
+[[ -d $REPO_DIR/config/umbriel && -d $REPO_DIR/etc/dconf ]] || die \
   "config/ and etc/ not found next to this script. Clone the whole repo and run it from there:
     git clone https://github.com/lmaule/arch-niri-noctalia.git && cd arch-niri-noctalia && ./install-niri-noctalia.sh"
 
@@ -355,12 +355,23 @@ step_amd() {
   info "AMD drivers installed (kernel $kver, Mesa $mesa_ver)."
 }
 
-step_niri() {
-  info "Installing niri and companion packages"
-  install_pkg niri
+step_desktop() {
+  local p
+  # niri is replaced by Umbriel; remove it if you said yes at the start.
+  for p in niri xwayland-satellite; do
+    if pacman -Qq "$p" &>/dev/null && [[ $REMOVE_NIRI -eq 1 ]]; then
+      info "Removing $p (replaced by Umbriel)"
+      sudo pacman -Rns --noconfirm "$p"
+    fi
+  done
+
+  # Umbriel is only packaged as umbriel-git (AUR), built from its latest code.
+  # It pulls in its screen-sharing portal and Xwayland (started on demand).
+  info "Installing Umbriel (umbriel-git from the AUR; this build takes a few minutes)"
+  install_pkg umbriel-git
+  info "Installing desktop companion packages"
   sudo pacman -S --needed --noconfirm \
-    xdg-desktop-portal-gnome xdg-desktop-portal-gtk \
-    xwayland-satellite kitty \
+    xdg-desktop-portal-gtk kitty \
     btop fastfetch hwdata \
     pipewire wireplumber pipewire-pulse \
     polkit upower
@@ -487,7 +498,7 @@ step_files() {
 
   # Nautilus's sidebar shows the folders listed in ~/.config/gtk-3.0/bookmarks.
   # GNOME fills that in at login with xdg-user-dirs-gtk, which needs a running
-  # GNOME-style session (niri doesn't run it), so add the same entries here.
+  # GNOME-style session (Umbriel doesn't run it), so add the same entries here.
   # Your own bookmarks are kept; entries already there aren't added twice.
   local bookmarks="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks" dir name uri
   mkdir -p "$(dirname "$bookmarks")"
@@ -659,7 +670,7 @@ step_noctalia() {
 # GTK & Qt theming (adw-gtk3 + qt5ct/qt6ct, coloured by Noctalia).
 # Follows Noctalia's GTK/Qt guide: adw-gtk3 for GTK apps, qt5ct/qt6ct for Qt
 # apps. Noctalia's gtk3/gtk4/qt colour templates are switched on in
-# config/noctalia/config.toml, and QT_QPA_PLATFORMTHEME in config/niri/cfg/misc.kdl.
+# config/noctalia/config.toml, and QT_QPA_PLATFORMTHEME in config/umbriel/cfg/environment.toml.
 step_theming() {
   local v qtct_cfg
   info "Installing GTK/Qt theming tools and cursor theme"
@@ -695,29 +706,23 @@ EOF
   sudo dconf update
 }
 
-# Config files: niri + Noctalia (from config/ in this repo)
+# Config files: Umbriel + Noctalia (from config/ in this repo)
 step_config() {
-  local cfg_home niri_dir niri_src niri_ver noctalia_dir old
+  local cfg_home umbriel_dir umbriel_src noctalia_dir old shots_cfg
   cfg_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-  niri_dir="$cfg_home/niri"
+  umbriel_dir="$cfg_home/umbriel"
 
-  # Prepare the niri config in a temp copy so the blur decision is part of the
+  # Prepare the Umbriel config in a temp copy so the blur choice is part of the
   # comparison (and re-runs don't back up an unchanged config).
-  niri_src=$(mktemp -d)
-  cp -r "$REPO_DIR/config/niri/." "$niri_src/"
-
-  # Blur needs niri >= 26.04 — older versions reject the settings in cfg/blur.kdl.
-  niri_ver=$(niri --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -n1 || true)
+  umbriel_src=$(mktemp -d)
+  cp -r "$REPO_DIR/config/umbriel/." "$umbriel_src/"
   if [[ $WITH_BLUR -eq 0 ]]; then
     info "Blur disabled (--no-blur)"
-    sed -i 's|^include "./cfg/blur.kdl"|// include "./cfg/blur.kdl"  // disabled by --no-blur|' "$niri_src/config.kdl"
-  elif [[ -z $niri_ver ]] || ! version_ge "$niri_ver" 26.04; then
-    warn "niri ${niri_ver:-(unknown version)} is older than 26.04 — blur is off. Re-run the installer after upgrading niri."
-    sed -i 's|^include "./cfg/blur.kdl"|// include "./cfg/blur.kdl"  // needs niri 26.04+|' "$niri_src/config.kdl"
+    sed -i '/^  "cfg\/blur.toml",$/d' "$umbriel_src/config.toml"
   fi
 
-  install_config "$niri_src" "$niri_dir"
-  rm -rf "$niri_src"
+  install_config "$umbriel_src" "$umbriel_dir"
+  rm -rf "$umbriel_src"
 
   # Noctalia: only config.toml is managed; other files in ~/.config/noctalia
   # (plugins, your own *.toml) are left alone.
@@ -731,8 +736,16 @@ step_config() {
     fi
   done
 
-  # Folder for niri screenshots (screenshot-path in cfg/misc.kdl).
+  # Screenshots: Noctalia takes them under Umbriel. Save them to
+  # ~/Pictures/Screenshots (written here with the full path, so it doesn't
+  # depend on ~ expansion). Skipped if you've set a screenshot folder yourself.
   mkdir -p "$HOME/Pictures/Screenshots"
+  shots_cfg="$noctalia_dir/screenshots.toml"
+  if ! grep -qsE '^\s*\[shell\.screenshot\]' "$noctalia_dir"/*.toml; then
+    info "Saving Noctalia screenshots to ~/Pictures/Screenshots ($shots_cfg)"
+    printf '# Created by install-niri-noctalia.sh\n[shell.screenshot]\ndirectory = "%s"\n' \
+      "$HOME/Pictures/Screenshots" > "$shots_cfg"
+  fi
 
   # btop: Noctalia's btop colour template only switches the theme if btop.conf
   # exists, and btop only creates it on first launch — so start one.
@@ -743,8 +756,8 @@ step_config() {
       > "$cfg_home/btop/btop.conf"
   fi
 
-  if command -v niri >/dev/null && ! niri validate -c "$niri_dir/config.kdl"; then
-    warn "niri reports a config error in $niri_dir — see the log. Your previous config is in $niri_dir.bak.*"
+  if command -v umbriel >/dev/null && ! umbriel config validate -c "$umbriel_dir/config.toml"; then
+    warn "Umbriel reports a config error in $umbriel_dir — see the log. Your previous config is in $umbriel_dir.bak.*"
   fi
 }
 
@@ -799,14 +812,14 @@ EOF
 }
 
 # Step list: function | title shown on screen.
-STEP_FN=(step_update step_aur step_amd step_niri step_zsh step_fonts step_files
+STEP_FN=(step_update step_aur step_amd step_desktop step_zsh step_fonts step_files
          step_helium step_apps step_gaming_vms step_keyring step_noctalia step_theming step_config
          step_greeter)
 STEP_TITLE=(
   "Updating Arch"
   "AUR helper (paru)"
   "AMD GPU drivers + LACT"
-  "niri and desktop tools"
+  "Umbriel and desktop tools"
   "zsh, Starship and fastfetch"
   "Fonts"
   "Nautilus, phones and network shares"
@@ -816,7 +829,7 @@ STEP_TITLE=(
   "GNOME Keyring"
   "Noctalia shell"
   "GTK and Qt theming"
-  "Config files (niri, Noctalia)"
+  "Config files (Umbriel, Noctalia)"
   "Login screen (Noctalia greeter)"
 )
 N=${#STEP_FN[@]}
@@ -834,7 +847,7 @@ BANNER=(
 "██║ ╚████║██║██║  ██║██║██║ ╚████║╚██████╔╝╚██████╗"
 "╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝"
 )
-SUBTITLE_PLAIN="niri · noctalia · arch linux $SYM_DASH desktop installer"
+SUBTITLE_PLAIN="umbriel · noctalia · arch linux $SYM_DASH desktop installer"
 START=$(date +%s)
 UI_ACTIVE=0
 STEP_PID=""
@@ -864,7 +877,7 @@ banner() {
   else
     center "NIRINOC" "${BOLD}${ACC}NIRINOC${RST}"; printf '%s\n' "$EL"
   fi
-  center "$SUBTITLE_PLAIN" "${MUT}niri · noctalia · arch linux ${ACC}${SYM_DASH}${MUT} desktop installer${RST}"
+  center "$SUBTITLE_PLAIN" "${MUT}umbriel · noctalia · arch linux ${ACC}${SYM_DASH}${MUT} desktop installer${RST}"
   printf '%s\n' "$EL"
 }
 
@@ -1009,7 +1022,7 @@ fi
 clear 2>/dev/null || true
 echo; banner; echo
 printf '  %sThis will install and set up:%s\n' "$BOLD" "$RST"
-printf '   %s%s%s niri, %s%s\n' "$ACC" "$SYM_DOT" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER -eq 1 ]] && echo ", $GREETER_PKG (login screen)")"
+printf '   %s%s%s Umbriel, %s%s\n' "$ACC" "$SYM_DOT" "$RST" "$SHELL_PKG" "$([[ $WITH_GREETER -eq 1 ]] && echo ", $GREETER_PKG (login screen)")"
 if [[ $AMD_GPU == yes ]]; then
   printf '   %s%s%s AMD GPU drivers and LACT\n' "$ACC" "$SYM_DOT" "$RST"
 else
@@ -1018,7 +1031,7 @@ fi
 printf '   %s%s%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop, qBittorrent, Zed\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$SYM_DOT" "$RST"
-printf '   %s%s%s your niri + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s your Umbriel + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$SYM_DOT" "$RST"
 
 confirm "Continue?" || exit 0
 
@@ -1030,6 +1043,10 @@ fi
 REMOVE_AMDVLK=0
 if [[ $AMD_GPU == yes ]] && pacman -Qq amdvlk &>/dev/null; then
   confirm "Remove AMDVLK? (discontinued AMD Vulkan driver that can override the better RADV)" && REMOVE_AMDVLK=1
+fi
+REMOVE_NIRI=0
+if pacman -Qq niri &>/dev/null; then
+  confirm "Remove niri? (replaced by Umbriel; your ~/.config/niri is kept)" && REMOVE_NIRI=1
 fi
 REMOVE_SPOTIFY_LAUNCHER=0
 if pacman -Qq spotify-launcher &>/dev/null; then
@@ -1128,11 +1145,11 @@ fi
 
 printf '  %sNext:%s\n' "$BOLD" "$RST"
 if [[ $WITH_GREETER -eq 1 ]]; then
-  printf '   %s%s%s Reboot, then pick %sniri%s at the Noctalia login screen.\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
+  printf '   %s%s%s Reboot, then pick %sUmbriel%s at the Noctalia login screen.\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
 else
-  printf '   %s%s%s Log out and start niri from a TTY with: %sniri-session%s\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
+  printf '   %s%s%s Log out and start Umbriel from a TTY with: %sstart-umbriel%s\n' "$ACC" "$SYM_DOT" "$RST" "$ACC" "$RST"
 fi
-printf '   %s%s%s Press %sMod+Shift+/%s in niri to see all keybinds.\n' "$ACC" "$SYM_DOT" "$RST" "$BOLD" "$RST"
+printf '   %s%s%s Press %sMod+Shift+/%s in Umbriel to see all keybinds.\n' "$ACC" "$SYM_DOT" "$RST" "$BOLD" "$RST"
 printf '   %s%s%s Full log: %s\n\n' "$ACC" "$SYM_DOT" "$RST" "$LOG"
 
 if [[ $ASSUME_YES -eq 0 && $WITH_GREETER -eq 1 ]]; then

@@ -1,0 +1,10 @@
+# ────────────── Environment ──────────────
+# Applied to every app in the session. Changes need an Umbriel restart.
+# https://docs.noctalia.dev/umbriel/configuration/#environment
+
+[environment]
+ELECTRON_OZONE_PLATFORM_HINT = "auto"
+QT_QPA_PLATFORM = "wayland"
+# qt6ct also answers to "qt5ct", so this covers Qt 5 and Qt 6 apps.
+QT_QPA_PLATFORMTHEME = "qt5ct"
+QT_WAYLAND_DISABLE_WINDOWDECORATION = "1"

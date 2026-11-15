@@ -1,0 +1,9 @@
+# ────────────── Monitors ──────────────
+# Monitors are machine-specific. Run `umbriel outputs` to see names and modes,
+# then uncomment and edit. https://docs.noctalia.dev/umbriel/outputs/
+
+# [output.DP-1]
+# mode = "2560x1440@144"
+# position = [0, 0]
+# scale = 1.0
+# vrr = "fullscreen"   # variable refresh rate in fullscreen games

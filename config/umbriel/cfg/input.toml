@@ -1,0 +1,22 @@
+# ────────────── Input ──────────────
+# https://docs.noctalia.dev/umbriel/input/
+
+[input.keyboard]
+numlock_toggle = true      # Num Lock on at startup
+# Uncomment to override your keyboard layout:
+# layout = "us"
+
+[input.touchpad]
+tap = true                 # tap to click
+natural_scroll = true      # scroll like a phone
+
+[input.mouse]
+# Uncomment to turn off mouse acceleration:
+# accel_profile = "flat"
+
+[input.focus]
+follows_mouse = "sloppy"   # focus the window under the pointer
+
+[input.cursor]
+theme = "capitaine-cursors"
+size = 24

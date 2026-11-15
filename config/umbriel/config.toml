@@ -1,0 +1,19 @@
+# Umbriel configuration — split into the files in cfg/.
+# Changes apply as soon as you save. Check edits with: umbriel config validate
+# Reference: https://docs.noctalia.dev/umbriel/
+#
+# Included files are applied in this order: tables merge by key, and rule lists
+# ([[window_rule]], [[layer_rule]]) collect entries from every file.
+
+[include]
+files = [
+  "cfg/general.toml",
+  "cfg/environment.toml",
+  "cfg/input.toml",
+  "cfg/appearance.toml",
+  "cfg/layout.toml",
+  "cfg/rules.toml",
+  "cfg/blur.toml",
+  "cfg/keybinds.toml",
+  "cfg/outputs.toml",
+]

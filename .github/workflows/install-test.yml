@@ -1,6 +1,6 @@
 # Runs the real installer in an Arch Linux container, with real pacman and the
 # real AUR, to catch renamed/removed packages and broken config before a real
-# install does. Also validates the installed niri config with niri itself.
+# install does. Also validates the installed Umbriel config with Umbriel itself.
 #
 # What a container can't test: booting, the login screen actually appearing,
 # and the GPU. Services are enabled but not started (no systemd running).
@@ -40,14 +40,16 @@ jobs:
           cd /home/tester/arch-niri-noctalia
           sudo -u tester -H ./install-niri-noctalia.sh --yes --verbose --amd-gpu
 
-      - name: Validate the installed niri config with niri
-        run: sudo -u tester -H niri validate -c /home/tester/.config/niri/config.kdl
+      - name: Validate the installed Umbriel config with Umbriel
+        run: sudo -u tester -H umbriel config validate -c /home/tester/.config/umbriel/config.toml
 
       - name: Check the installed files
         run: |
           set -x
           h=/home/tester
-          test -f $h/.config/niri/cfg/keybinds.kdl
+          test -f $h/.config/umbriel/cfg/keybinds.toml
+          grep -q 'cfg/blur.toml' $h/.config/umbriel/config.toml
+          grep -q "$h/Pictures/Screenshots" $h/.config/noctalia/screenshots.toml
           test -f $h/.config/noctalia/config.toml
           test -f $h/.config/btop/btop.conf
           test -f $h/.config/kitty/kitty.conf
@@ -57,7 +59,8 @@ jobs:
           grep -q 'pam_gnome_keyring.so' /etc/pam.d/greetd
           grep -q 'noctalia-greeter-session' /etc/greetd/config.toml
           getent passwd tester | grep -q '/usr/bin/zsh$'
-          for p in niri noctalia noctalia-greeter kitty zsh nautilus steam discord \
+          test -f /usr/share/wayland-sessions/umbriel.desktop          # listed at the login screen
+          for p in umbriel-git xdg-desktop-portal-umbriel-git noctalia noctalia-greeter kitty zsh nautilus steam discord \
                    spotify helium-browser-bin protonplus claude-desktop lact \
                    mangohud lib32-mangohud goverlay faugus-launcher vm-curator-bin swtpm edk2-ovmf \
                    qbittorrent zed; do

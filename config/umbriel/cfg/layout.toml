@@ -1,0 +1,11 @@
+# ────────────── Layout ──────────────
+# https://docs.noctalia.dev/umbriel/layout/
+
+[layout]
+mode = "scrolling"                     # niri-style scrolling columns
+gap = 16                               # space between windows
+extent_presets = [0.333, 0.5, 0.667]   # widths cycled by Mod+R
+
+[layout.scrolling]
+default_extent_fraction = 0.5          # new windows start at half the screen width
+center_focused = "never"

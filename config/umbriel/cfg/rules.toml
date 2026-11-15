@@ -1,0 +1,39 @@
+# ────────────── Window rules ──────────────
+# Rules combine in file order; later values override earlier ones.
+# https://docs.noctalia.dev/umbriel/window-rules/
+
+# Noctalia's settings window floats at a fixed size.
+[[window_rule]]
+match.app_id = "^dev.noctalia.Noctalia$"
+default_floating = true
+default_floating_size_px = { width = 1080, height = 920 }
+
+# Umbriel's screen-share picker.
+[[window_rule]]
+match.app_id = "^dev.noctalia.UmbrielSharePicker$"
+default_floating = true
+default_floating_size_px = { width = 800, height = 600 }
+
+# Picture-in-picture video floats in the bottom-right corner.
+[[window_rule]]
+match.title = "^(Picture-in-Picture|Picture in picture)$"
+default_floating = true
+default_maximize = false
+default_position = { x = 20, y = 20, anchor = "bottom_right" }
+
+# Steam: its friends list and other small windows float; the main window tiles.
+[[window_rule]]
+match.app_id = "^steam$"
+default_floating = true
+
+[[window_rule]]
+match.app_id = "^steam$"
+match.title = "^[Ss]team$"
+default_floating = false
+
+# Steam's notification pop-ups sit in the bottom-right corner without taking focus.
+[[window_rule]]
+match.title = "^notificationtoasts_.+_desktop"
+default_position = { x = 10, y = 10, anchor = "bottom_right" }
+default_focused = false
+default_pinned = true

@@ -1,0 +1,7 @@
+# ────────────── Appearance ──────────────
+# https://docs.noctalia.dev/umbriel/appearance/
+
+[appearance]
+prefer_no_csd = true       # ask apps to let Umbriel draw borders, not their own title bars
+border_width = 2
+corner_radius = 20

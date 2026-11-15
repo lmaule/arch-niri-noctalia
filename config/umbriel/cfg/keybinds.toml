@@ -1,0 +1,156 @@
+# ────────────── Keybinds ──────────────
+# Ported from this setup's niri keybinds (CachyOS layout + Noctalia's binds).
+# Defining [keybinds] replaces Umbriel's built-in set, so every bind is here.
+# Syntax:  https://docs.noctalia.dev/umbriel/keybinds/
+# Actions: https://docs.noctalia.dev/umbriel/actions/
+# Mod is the Super (Windows) key.
+
+[keybinds]
+
+# ─── Help and session ───
+"Mod+Shift+Slash" = { action = "cheatsheet-toggle", repeat = false }
+"Mod+Shift+Escape" = { action = "cheatsheet-toggle", repeat = false }
+# Get your shortcuts back from a fullscreen app (game, VM) that grabbed them.
+"Mod+Escape" = { action = "shortcuts-inhibit-toggle", allow_when_inhibited = true, repeat = false }
+"Ctrl+Alt+Delete" = { action = "session-quit", repeat = false }   # asks to confirm
+"Mod+Shift+P" = { action = "dpms-off", repeat = false }           # monitors off
+"Mod+Ctrl+P" = { action = "dpms-on", repeat = false }             # monitors back on
+
+# ─── Applications ───
+"Mod+Return" = { action = "spawn kitty", repeat = false }
+"Mod+B" = { action = "spawn helium-browser", repeat = false }
+"Mod+E" = { action = "spawn nautilus", repeat = false }
+"Mod+Shift+E" = { action = "spawn zeditor", repeat = false }      # Zed (Arch names it zeditor)
+
+# ─── Noctalia ───
+"Mod" = "spawn noctalia msg panel-toggle launcher"                 # tap Super on its own
+"Mod+Space" = { action = "spawn noctalia msg panel-toggle launcher", repeat = false }
+"Mod+Ctrl+Return" = { action = "spawn noctalia msg panel-toggle launcher", repeat = false }
+"Mod+S" = { action = "spawn noctalia msg panel-toggle control-center", repeat = false }
+"Mod+Shift+S" = { action = "spawn noctalia msg settings-toggle", repeat = false }
+"Mod+Shift+Comma" = { action = "spawn noctalia msg settings-toggle", repeat = false }
+"Mod+Shift+Return" = { action = "spawn noctalia msg panel-toggle wallpaper", repeat = false }
+"Mod+Shift+Q" = { action = "spawn noctalia msg panel-toggle session", repeat = false }
+"Mod+Alt+L" = { action = "spawn noctalia msg session lock", repeat = false }
+"Alt+Tab" = "spawn noctalia msg window-switcher hold"
+"Alt+Shift+Tab" = "spawn noctalia msg window-switcher hold reverse"
+
+# ─── Screenshots (Noctalia; saved to ~/Pictures/Screenshots and copied) ───
+"Ctrl+Shift+1" = { action = "spawn noctalia msg screenshot-region", repeat = false }
+"Ctrl+Shift+2" = { action = "spawn noctalia msg screenshot-fullscreen", repeat = false }
+"Ctrl+Shift+3" = { action = "spawn noctalia msg screenshot-window", repeat = false }
+
+# ─── Media, volume and brightness (Noctalia shows the on-screen display) ───
+"XF86AudioRaiseVolume" = { action = "spawn noctalia msg volume-up", allow_when_locked = true }
+"XF86AudioLowerVolume" = { action = "spawn noctalia msg volume-down", allow_when_locked = true }
+"XF86AudioMute" = { action = "spawn noctalia msg volume-mute", allow_when_locked = true, repeat = false }
+"XF86AudioMicMute" = { action = "spawn noctalia msg mic-mute", allow_when_locked = true, repeat = false }
+"XF86AudioPlay" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
+"XF86AudioPause" = { action = "spawn noctalia msg media toggle", allow_when_locked = true, repeat = false }
+"XF86AudioStop" = { action = "spawn noctalia msg media stop", allow_when_locked = true, repeat = false }
+"XF86AudioNext" = { action = "spawn noctalia msg media next", allow_when_locked = true }
+"XF86AudioPrev" = { action = "spawn noctalia msg media previous", allow_when_locked = true }
+"XF86MonBrightnessUp" = { action = "spawn noctalia msg brightness-up", allow_when_locked = true }
+"XF86MonBrightnessDown" = { action = "spawn noctalia msg brightness-down", allow_when_locked = true }
+
+# ─── Focus ───
+"Mod+Q" = { action = "window-close", repeat = false }
+"Mod+Left" = "window-focus-left"
+"Mod+Right" = "window-focus-right"
+"Mod+Up" = "window-focus-up"
+"Mod+Down" = "window-focus-down"
+"Mod+H" = "window-focus-left"
+"Mod+L" = "window-focus-right"
+"Mod+K" = "window-focus-up"
+"Mod+J" = "window-focus-down"
+"Mod+Home" = "column-focus-first"
+"Mod+End" = "column-focus-last"
+"Mod+Shift+V" = { action = "window-focus-switch-floating", repeat = false }
+
+# ─── Move ───
+"Mod+Ctrl+Left" = "column-move-left"
+"Mod+Ctrl+Right" = "column-move-right"
+"Mod+Ctrl+Up" = "window-move-up"
+"Mod+Ctrl+Down" = "window-move-down"
+"Mod+Ctrl+H" = "column-move-left"
+"Mod+Ctrl+L" = "column-move-right"
+"Mod+Ctrl+K" = "window-move-up"
+"Mod+Ctrl+J" = "window-move-down"
+"Mod+Ctrl+Home" = "column-move-to-first"
+"Mod+Ctrl+End" = "column-move-to-last"
+
+# ─── Monitors ───
+"Mod+Shift+Left" = "output-focus-left"
+"Mod+Shift+Right" = "output-focus-right"
+"Mod+Shift+Up" = "output-focus-up"
+"Mod+Shift+Down" = "output-focus-down"
+"Mod+Shift+Ctrl+Left" = "column-move-to-output-left"
+"Mod+Shift+Ctrl+Right" = "column-move-to-output-right"
+"Mod+Shift+Ctrl+Up" = "column-move-to-output-up"
+"Mod+Shift+Ctrl+Down" = "column-move-to-output-down"
+
+# ─── Columns ───
+"Mod+BracketLeft" = "window-consume-or-expel-left"     # into / out of the column on the left
+"Mod+BracketRight" = "window-consume-or-expel-right"   # into / out of the column on the right
+"Mod+Comma" = "window-consume-from-right"              # pull the next window into this column
+"Mod+Period" = "window-consume-or-expel-right"         # push this window out of its column
+"Mod+W" = { action = "column-toggle-tabbed", repeat = false }
+"Mod+C" = "column-center"
+
+# ─── Sizes ───
+"Mod+R" = "window-cycle-primary-extent"                # cycle column widths
+"Mod+Shift+R" = "window-cycle-primary-extent-back"
+"Mod+Ctrl+Shift+R" = "window-cycle-secondary-extent"   # cycle window heights
+"Mod+Ctrl+R" = "window-cycle-secondary-extent-back"
+"Mod+Minus" = "window-modify-primary-extent -0.1"      # narrower
+"Mod+Equal" = "window-modify-primary-extent +0.1"      # wider
+"Mod+Shift+Minus" = "window-modify-secondary-extent -0.1"   # shorter
+"Mod+Shift+Equal" = "window-modify-secondary-extent +0.1"   # taller
+"Mod+Ctrl+F" = "window-set-primary-extent 1.0"         # fill the screen width
+
+# ─── Window modes ───
+"Mod+T" = { action = "window-toggle-floating", repeat = false }
+"Mod+F" = { action = "window-toggle-maximize", repeat = false }
+"Mod+Shift+F" = { action = "window-toggle-fullscreen", repeat = false }
+"Mod+M" = { action = "window-toggle-maximize-to-edges", repeat = false }
+"Mod+P" = { action = "window-toggle-pinned", repeat = false }     # keep on top across workspaces
+
+# ─── Scratchpad (Umbriel: a hidden place to park windows) ───
+"Mod+Shift+Space" = { action = "window-move-to-scratchpad", repeat = false }
+"Mod+Ctrl+Space" = "scratchpad-toggle"
+
+# ─── Workspaces ───
+"Mod+1" = "workspace-switch 1"
+"Mod+2" = "workspace-switch 2"
+"Mod+3" = "workspace-switch 3"
+"Mod+4" = "workspace-switch 4"
+"Mod+5" = "workspace-switch 5"
+"Mod+6" = "workspace-switch 6"
+"Mod+7" = "workspace-switch 7"
+"Mod+8" = "workspace-switch 8"
+"Mod+9" = "workspace-switch 9"
+"Mod+Ctrl+1" = "column-move-to-workspace 1"
+"Mod+Ctrl+2" = "column-move-to-workspace 2"
+"Mod+Ctrl+3" = "column-move-to-workspace 3"
+"Mod+Ctrl+4" = "column-move-to-workspace 4"
+"Mod+Ctrl+5" = "column-move-to-workspace 5"
+"Mod+Ctrl+6" = "column-move-to-workspace 6"
+"Mod+Ctrl+7" = "column-move-to-workspace 7"
+"Mod+Ctrl+8" = "column-move-to-workspace 8"
+"Mod+Ctrl+9" = "column-move-to-workspace 9"
+"Mod+Tab" = "workspace-focus-last"
+"Mod+O" = { action = "overview-toggle", repeat = false }
+
+# ─── Mouse wheel ───
+"Mod+WheelDown" = "workspace-next"
+"Mod+WheelUp" = "workspace-previous"
+"Mod+Ctrl+WheelDown" = "column-move-to-workspace-next"
+"Mod+Ctrl+WheelUp" = "column-move-to-workspace-previous"
+"Mod+WheelRight" = "window-focus-right"
+"Mod+WheelLeft" = "window-focus-left"
+"Mod+Ctrl+WheelRight" = "column-move-right"
+"Mod+Ctrl+WheelLeft" = "column-move-left"
+"Mod+Shift+WheelDown" = "window-focus-right"
+"Mod+Shift+WheelUp" = "window-focus-left"
+"Mod+Ctrl+Shift+WheelDown" = "column-move-right"
+"Mod+Ctrl+Shift+WheelUp" = "column-move-left"

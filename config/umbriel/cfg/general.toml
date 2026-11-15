@@ -1,0 +1,18 @@
+# ────────────── Session ──────────────
+# https://docs.noctalia.dev/umbriel/configuration/#general
+
+[general]
+autostart = ["noctalia"]   # started once per session; changes need a restart
+show_cheatsheet = false    # don't pop up the keybind list at login (Mod+Shift+/ shows it)
+# Let apps bring their windows forward when asked, e.g. clicking a Noctalia
+# notification focuses the app that sent it.
+focus_on_activate = true
+
+[workspaces]
+back_and_forth = true      # pressing the current workspace's key goes back to the last one
+
+# Top-left screen corner opens the overview after a short pause.
+[hot_corners.top_left]
+enabled = true
+delay_ms = 500
+action = "overview-open"

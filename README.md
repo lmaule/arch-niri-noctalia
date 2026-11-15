@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lmaule/arch-niri-noctalia/actions/workflows/install-test.yml"><img alt="Install test" src="https://github.com/lmaule/arch-niri-noctalia/actions/workflows/install-test.yml/badge.svg"></a>
+  <a href="https://github.com/lmaule/arch-umbriel-noctalia/actions/workflows/install-test.yml"><img alt="Install test" src="https://github.com/lmaule/arch-umbriel-noctalia/actions/workflows/install-test.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
   <img alt="Arch Linux" src="https://img.shields.io/badge/Arch_Linux-1793D1?logo=archlinux&logoColor=white">
 </p>
@@ -34,16 +34,16 @@ sets up networking, Bluetooth and power management), a normal user with `sudo`, 
 Run as your normal user, not root:
 
 ```bash
-git clone https://github.com/lmaule/arch-niri-noctalia.git
-cd arch-niri-noctalia
-./install-niri-noctalia.sh
+git clone https://github.com/lmaule/arch-umbriel-noctalia.git
+cd arch-umbriel-noctalia
+./install-umbrinoc.sh
 ```
 
 What happens:
 
 1. It shows what it will install and asks its questions (continue, enable multilib, …).
 2. It asks for your **sudo password once** and reuses it for the whole install.
-3. A progress screen shows each step as it runs. Everything is logged to `~/arch-niri-noctalia-install.log`.
+3. A progress screen shows each step as it runs. Everything is logged to `~/umbrinoc-install.log`.
 4. If a step fails, you see the end of the log and can **retry**, **skip** or **quit**.
 5. A summary lists anything worth checking, then offers to reboot.
 
@@ -204,7 +204,7 @@ config/                       → copied to ~/.config/
     └── config.toml           # polkit agent, colour templates
 etc/dconf/                    → copied to /etc/dconf/ (GTK theme, cursor defaults)
 .github/workflows/            # the install test
-install-niri-noctalia.sh
+install-umbrinoc.sh
 ```
 
 </details>
@@ -212,9 +212,9 @@ install-niri-noctalia.sh
 ## Updating
 
 ```bash
-cd arch-niri-noctalia
+cd arch-umbriel-noctalia
 git pull
-./install-niri-noctalia.sh
+./install-umbrinoc.sh
 ```
 
 Re-running only changes what's different. If the repo's Umbriel or Noctalia config has changed and you've edited
@@ -231,7 +231,7 @@ copy your changes back.
 
 | Problem | What to do |
 |---|---|
-| A step failed | Press **r** to retry, or check `~/arch-niri-noctalia-install.log`. Run with `--verbose` to watch the output live. |
+| A step failed | Press **r** to retry, or check `~/umbrinoc-install.log`. Run with `--verbose` to watch the output live. |
 | AMD step says *skipped* | The start screen says whether an AMD GPU was found. Use `--amd-gpu` to force it. |
 | Saved passwords keep asking to be unlocked | Open *Passwords and Keys* and make sure the **Login** keyring's password matches your login password. |
 | Umbriel ignores your config edits | Run `umbriel config validate` to see the error. Your previous config is in `~/.config/umbriel.bak.*`. |

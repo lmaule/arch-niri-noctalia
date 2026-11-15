@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Arch desktop setup: Umbriel + Noctalia shell + Noctalia greeter, plus drivers, apps and shell config.
 #
-# Usage:  ./install-niri-noctalia.sh [options]
+# Usage:  ./install-umbrinoc.sh [options]
 #   --git         use the -git (development) packages for noctalia / noctalia-greeter
 #   --no-greeter  skip greetd + noctalia-greeter setup
 #   --no-blur     leave out the blur settings (cfg/blur.toml)
@@ -12,7 +12,7 @@
 #
 # Run as your normal user (NOT root), from a clone of the repo: it installs the
 # config files in config/ and etc/ next to it. sudo is used where needed.
-# Everything is logged to ~/arch-niri-noctalia-install.log.
+# Everything is logged to ~/umbrinoc-install.log.
 
 # No `set -e` here: each step runs in its own subshell with `set -e`, so a
 # failing step can be retried or skipped instead of killing the installer.
@@ -99,7 +99,7 @@ else
   SPIN=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
 fi
 
-LOG="$HOME/arch-niri-noctalia-install.log"
+LOG="$HOME/umbrinoc-install.log"
 WARN_FILE=$(mktemp)
 
 # info/warn are used inside steps, whose output goes to the log. Warnings are
@@ -127,7 +127,7 @@ command -v sudo   >/dev/null || die "sudo is required."
 REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
 [[ -d $REPO_DIR/config/umbriel && -d $REPO_DIR/etc/dconf ]] || die \
   "config/ and etc/ not found next to this script. Clone the whole repo and run it from there:
-    git clone https://github.com/lmaule/arch-niri-noctalia.git && cd arch-niri-noctalia && ./install-niri-noctalia.sh"
+    git clone https://github.com/lmaule/arch-umbriel-noctalia.git && cd arch-umbriel-noctalia && ./install-umbrinoc.sh"
 
 SHELL_PKG=noctalia
 GREETER_PKG=noctalia-greeter
@@ -388,7 +388,7 @@ step_zsh() {
   if [[ ! -f $HOME/.zshrc ]]; then
     info "Creating a starter ~/.zshrc"
     cat > "$HOME/.zshrc" <<'EOF'
-# ~/.zshrc — created by install-niri-noctalia.sh
+# ~/.zshrc — created by install-umbrinoc.sh
 
 # History
 HISTFILE=~/.zsh_history
@@ -468,7 +468,7 @@ step_fonts() {
   if ! grep -qsE '^\s*font_family\s' "$kitty_cfg"; then
     info "Setting kitty's font to JetBrainsMono Nerd Font ($kitty_cfg)"
     mkdir -p "$(dirname "$kitty_cfg")"
-    printf '\n# Added by install-niri-noctalia.sh\nfont_family JetBrainsMono Nerd Font\nfont_size 11.0\n' >> "$kitty_cfg"
+    printf '\n# Added by install-umbrinoc.sh\nfont_family JetBrainsMono Nerd Font\nfont_size 11.0\n' >> "$kitty_cfg"
   fi
 }
 
@@ -701,8 +701,12 @@ EOF
     sudo cp /etc/dconf/profile/user "/etc/dconf/profile/user.bak.$(date +%s)"
   fi
   sudo install -Dm644 "$REPO_DIR/etc/dconf/profile/user" /etc/dconf/profile/user
-  sudo install -Dm644 "$REPO_DIR/etc/dconf/db/local.d/00-arch-niri-noctalia.conf" \
-    /etc/dconf/db/local.d/00-arch-niri-noctalia.conf
+  sudo install -Dm644 "$REPO_DIR/etc/dconf/db/local.d/00-arch-umbriel-noctalia.conf" \
+    /etc/dconf/db/local.d/00-arch-umbriel-noctalia.conf
+  # The same defaults under this repo's old name, from earlier installs.
+  if [[ -f /etc/dconf/db/local.d/00-arch-niri-noctalia.conf ]]; then
+    sudo rm -f /etc/dconf/db/local.d/00-arch-niri-noctalia.conf
+  fi
   sudo dconf update
 }
 
@@ -731,7 +735,7 @@ step_config() {
   install_config "$REPO_DIR/config/noctalia/config.toml" "$noctalia_dir/config.toml"
   # Files older versions of this script wrote, now part of config.toml.
   for old in polkit.toml theming.toml; do
-    if [[ -f $noctalia_dir/$old ]] && grep -q 'install-niri-noctalia\|polkit_agent' "$noctalia_dir/$old"; then
+    if [[ -f $noctalia_dir/$old ]] && grep -q 'install-niri-noctalia\|install-umbrinoc\|polkit_agent' "$noctalia_dir/$old"; then
       mv "$noctalia_dir/$old" "$noctalia_dir/$old.bak.$(date +%Y%m%d-%H%M%S)"
     fi
   done
@@ -743,7 +747,7 @@ step_config() {
   shots_cfg="$noctalia_dir/screenshots.toml"
   if ! grep -qsE '^\s*\[shell\.screenshot\]' "$noctalia_dir"/*.toml; then
     info "Saving Noctalia screenshots to ~/Pictures/Screenshots ($shots_cfg)"
-    printf '# Created by install-niri-noctalia.sh\n[shell.screenshot]\ndirectory = "%s"\n' \
+    printf '# Created by install-umbrinoc.sh\n[shell.screenshot]\ndirectory = "%s"\n' \
       "$HOME/Pictures/Screenshots" > "$shots_cfg"
   fi
 
@@ -752,7 +756,7 @@ step_config() {
   if [[ ! -f $cfg_home/btop/btop.conf ]]; then
     info "Creating ~/.config/btop/btop.conf with Noctalia's colours"
     mkdir -p "$cfg_home/btop"
-    printf '# Created by install-niri-noctalia.sh; btop adds its other settings on first run.\ncolor_theme = "noctalia"\n' \
+    printf '# Created by install-umbrinoc.sh; btop adds its other settings on first run.\ncolor_theme = "noctalia"\n' \
       > "$cfg_home/btop/btop.conf"
   fi
 
@@ -1093,7 +1097,7 @@ SUDO_KEEPALIVE=$!
 # Start a fresh log (keeping the previous one as .old).
 if [[ -f $LOG ]]; then mv -f "$LOG" "$LOG.old"; fi
 {
-  echo "arch-niri-noctalia installer — $(date)"
+  echo "UMBRINOC installer — $(date)"
   echo "repo: $REPO_DIR ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo 'no git'))"
   echo "options: $*"
   echo "AMD GPU: $AMD_GPU   multilib: $WANT_MULTILIB   greeter: $WITH_GREETER   blur: $WITH_BLUR"

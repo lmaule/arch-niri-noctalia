@@ -31,14 +31,14 @@ jobs:
 
       - name: Copy the repo to the test user's home
         run: |
-          cp -r "$GITHUB_WORKSPACE" /home/tester/arch-niri-noctalia
-          chown -R tester: /home/tester/arch-niri-noctalia
+          cp -r "$GITHUB_WORKSPACE" /home/tester/arch-umbriel-noctalia
+          chown -R tester: /home/tester/arch-umbriel-noctalia
 
       - name: Run the installer
         # --amd-gpu: there's no GPU here, but this still checks the AMD package names.
         run: |
-          cd /home/tester/arch-niri-noctalia
-          sudo -u tester -H ./install-niri-noctalia.sh --yes --verbose --amd-gpu
+          cd /home/tester/arch-umbriel-noctalia
+          sudo -u tester -H ./install-umbrinoc.sh --yes --verbose --amd-gpu
 
       - name: Validate the installed Umbriel config with Umbriel
         run: sudo -u tester -H umbriel config validate -c /home/tester/.config/umbriel/config.toml
@@ -69,12 +69,12 @@ jobs:
 
       - name: Show warnings from the summary
         if: always()
-        run: grep -h 'WARNING' /home/tester/arch-niri-noctalia-install.log || echo "No warnings."
+        run: grep -h 'WARNING' /home/tester/umbrinoc-install.log || echo "No warnings."
 
       - name: Keep the install log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: install-log
-          path: /home/tester/arch-niri-noctalia-install.log*
+          path: /home/tester/umbrinoc-install.log*
           if-no-files-found: ignore

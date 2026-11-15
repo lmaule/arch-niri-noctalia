@@ -1,4 +1,4 @@
-<h1 align="center">NIRINOC</h1>
+<h1 align="center">UMBRINOC</h1>
 
 <p align="center">
   <b>A one-script Umbriel + Noctalia desktop for Arch Linux</b><br>

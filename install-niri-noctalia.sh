@@ -840,12 +840,12 @@ declare -a STATE   # pending | running | done | skipped | failed
 # ═════════════════════════════════════════════════════════════════════════════
 
 BANNER=(
-"███╗   ██╗██╗██████╗ ██╗███╗   ██╗ ██████╗  ██████╗"
-"████╗  ██║██║██╔══██╗██║████╗  ██║██╔═══██╗██╔════╝"
-"██╔██╗ ██║██║██████╔╝██║██╔██╗ ██║██║   ██║██║     "
-"██║╚██╗██║██║██╔══██╗██║██║╚██╗██║██║   ██║██║     "
-"██║ ╚████║██║██║  ██║██║██║ ╚████║╚██████╔╝╚██████╗"
-"╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝"
+"██╗   ██╗███╗   ███╗██████╗ ██████╗ ██╗███╗   ██╗ ██████╗  ██████╗"
+"██║   ██║████╗ ████║██╔══██╗██╔══██╗██║████╗  ██║██╔═══██╗██╔════╝"
+"██║   ██║██╔████╔██║██████╔╝██████╔╝██║██╔██╗ ██║██║   ██║██║     "
+"██║   ██║██║╚██╔╝██║██╔══██╗██╔══██╗██║██║╚██╗██║██║   ██║██║     "
+"╚██████╔╝██║ ╚═╝ ██║██████╔╝██║  ██║██║██║ ╚████║╚██████╔╝╚██████╗"
+" ╚═════╝ ╚═╝     ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝"
 )
 SUBTITLE_PLAIN="umbriel · noctalia · arch linux $SYM_DASH desktop installer"
 START=$(date +%s)
@@ -865,7 +865,7 @@ center() {  # center <text-without-colour-codes> <coloured-text>
 
 banner() {
   local i
-  if (( $(term_cols) >= 56 )); then
+  if (( $(term_cols) >= 70 )); then
     for i in "${!BANNER[@]}"; do
       if [[ -n $RST ]]; then
         center "${BANNER[i]}" "${GRAD[i]}${BANNER[i]}${RST}"
@@ -875,7 +875,7 @@ banner() {
       printf '%s\n' "$EL"
     done
   else
-    center "NIRINOC" "${BOLD}${ACC}NIRINOC${RST}"; printf '%s\n' "$EL"
+    center "UMBRINOC" "${BOLD}${ACC}UMBRINOC${RST}"; printf '%s\n' "$EL"
   fi
   center "$SUBTITLE_PLAIN" "${MUT}umbriel · noctalia · arch linux ${ACC}${SYM_DASH}${MUT} desktop installer${RST}"
   printf '%s\n' "$EL"
@@ -893,7 +893,7 @@ draw_header() {
   printf '\e[H\e[K\n'
   # Hide the big banner on short terminals so the checklist still fits.
   if (( $(term_lines) >= N + 17 )); then banner; else
-    center "NIRINOC $SYM_DASH desktop installer" "${BOLD}${ACC}NIRINOC${RST}${MUT} $SYM_DASH desktop installer${RST}"; printf '\e[K\n'
+    center "UMBRINOC $SYM_DASH desktop installer" "${BOLD}${ACC}UMBRINOC${RST}${MUT} $SYM_DASH desktop installer${RST}"; printf '\e[K\n'
   fi
   printf '\e[K\n'
 
@@ -1067,7 +1067,7 @@ sudo_needs_password() {
 }
 if sudo_needs_password; then
   [[ -t 0 ]] || die "sudo needs your password but there's no terminal to ask in. Run the installer interactively."
-  SUDO_DIR=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/nirinoc-sudo.XXXXXX")
+  SUDO_DIR=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/umbrinoc-sudo.XXXXXX")
   chmod 700 "$SUDO_DIR"
   printf '\n%s::%s Your password is needed for sudo. It is asked once and reused for the whole install.\n' "$ACC" "$RST"
   sudo_ok=0

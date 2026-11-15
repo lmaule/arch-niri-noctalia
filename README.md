@@ -1,8 +1,8 @@
 <h1 align="center">NIRINOC</h1>
 
 <p align="center">
-  <b>A one-script niri + Noctalia desktop for Arch Linux</b><br>
-  Turns a fresh Arch install into a complete <a href="https://github.com/niri-wm/niri">niri</a> desktop with the
+  <b>A one-script Umbriel + Noctalia desktop for Arch Linux</b><br>
+  Turns a fresh Arch install into a complete <a href="https://github.com/noctalia-dev/umbriel">Umbriel</a> desktop with the
   <a href="https://github.com/noctalia-dev/noctalia">Noctalia</a> shell and login screen, AMD drivers, apps,
   fonts and a themed zsh — from the official repos and the AUR, no Flatpak.
 </p>
@@ -19,7 +19,7 @@
 
 ## Highlights
 
-- **niri + Noctalia**, set up with CachyOS's split config and keybinds, merged with Noctalia's recommended ones.
+- **Umbriel + Noctalia**, both by the Noctalia developers: a scrolling-tiling compositor with blur and fluid animations, and the shell on top.
 - **Noctalia login screen** (greetd), and your login password unlocks GNOME Keyring.
 - **Matching colours everywhere:** GTK, Qt, kitty and btop follow Noctalia's theme.
 - **AMD RX 9000 ready:** Mesa/RADV, firmware, 32-bit drivers and LACT, detected automatically.
@@ -47,15 +47,19 @@ What happens:
 4. If a step fails, you see the end of the log and can **retry**, **skip** or **quit**.
 5. A summary lists anything worth checking, then offers to reboot.
 
-After rebooting, choose the **niri** session at the Noctalia login screen.
+After rebooting, choose the **Umbriel** session at the Noctalia login screen.
+
+> **Heads-up:** [Umbriel](https://github.com/noctalia-dev/umbriel) is young. Its own README says configuration keys,
+> keybinds and behaviour may change between releases, and on Arch it's only packaged as `umbriel-git` (built from its
+> latest code). If an update breaks something, `umbriel config validate` shows what changed in the config.
 
 ### Options
 
 | Flag | What it does |
 |---|---|
 | `--git` | Use the development (`-git`) packages for Noctalia and the greeter |
-| `--no-greeter` | Skip the login screen (start niri from a TTY with `niri-session`) |
-| `--no-blur` | Skip the blur rules (they need niri 26.04 or newer) |
+| `--no-greeter` | Skip the login screen (start Umbriel from a TTY with `start-umbriel`) |
+| `--no-blur` | Leave out the blur settings |
 | `--amd-gpu` / `--no-amd-gpu` | Force or skip the AMD driver step (default: detect an AMD card) |
 | `--yes` | Answer yes to every question, stop on the first error, never reboot |
 | `--verbose` | Show the full output instead of the progress screen |
@@ -64,7 +68,7 @@ After rebooting, choose the **niri** session at the Noctalia login screen.
 
 | Area | Packages |
 |---|---|
-| Desktop | `niri`, `noctalia`, `xwayland-satellite`, `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower` |
+| Desktop | Umbriel¹ (with its screen-sharing portal and Xwayland), `noctalia`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower` |
 | Login screen | `greetd`, `noctalia-greeter` |
 | AMD GPU | `mesa`, `vulkan-radeon`, `linux-firmware-amdgpu`, 32-bit drivers, `lact`, `rocm-smi-lib`, `vulkan-tools`, `mesa-utils`, `libva-utils` |
 | Terminal & shell | `kitty`, `zsh` (completions, autosuggestions, syntax highlighting), `starship`, `btop`, `fastfetch` |
@@ -75,16 +79,17 @@ After rebooting, choose the **niri** session at the Noctalia login screen.
 | Apps | Helium¹, Steam, Discord, Spotify¹, ProtonPlus¹, Claude Desktop¹, `qbittorrent`, `zed` |
 | Gaming & VMs | `mangohud`, `goverlay`, Faugus Launcher¹, VM Curator¹ (+ `edk2-ovmf` and `swtpm` for UEFI / Windows 11 VMs) |
 
-¹ From the AUR (`helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
+¹ From the AUR (`umbriel-git`, `helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
 AUR packages are maintained by the community, not by the app developers. If no AUR helper is installed, `paru` is set up first.
 
 ## What it configures
 
 **Desktop**
-- **niri** gets the split config from `config/niri/`. An existing `~/.config/niri` is backed up first.
+- **Umbriel** gets the split config from `config/umbriel/`. An existing `~/.config/umbriel` is backed up first.
+  If niri is installed, the installer offers to remove it (your `~/.config/niri` is kept).
 - **Noctalia** gets `config/noctalia/config.toml`: its polkit agent (password prompts for apps) and colour templates.
 - **Login screen:** greetd runs the Noctalia greeter, and any previous display manager is disabled.
-- **Screenshots** are saved to `~/Pictures/Screenshots` and copied to the clipboard.
+- **Screenshots** are taken by Noctalia, saved to `~/Pictures/Screenshots` and copied to the clipboard.
 
 **Look and feel**
 - GTK apps use `adw-gtk3`, Qt apps use qt5ct/qt6ct, with the capitaine cursor theme.
@@ -108,12 +113,12 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 | `Mod+Return` | Terminal (kitty) | | `Mod+Q` | Close window |
 | `Mod+B` | Browser (Helium) | | `Mod+T` | Toggle floating |
 | `Mod+E` | Files (Nautilus) | | `Mod+F` | Maximise column |
-| `Mod+Space` | App launcher | | `Mod+O` | Overview |
-| `Mod+S` | Control center | | `Mod+1`…`9` | Go to workspace |
-| `Mod+Shift+S` | Noctalia settings | | `Alt+Tab` | Window switcher |
-| `Mod+Alt+L` | Lock screen | | `Ctrl+Shift+1/2/3` | Screenshot: region / screen / window |
-| `Mod+Shift+Q` | Session menu | | `Mod+←→↑↓` | Move focus |
-| `Mod+Shift+E` | Text editor (Zed) | | | |
+| `Mod+Shift+E` | Text editor (Zed) | | `Mod+O` | Overview |
+| `Mod` (tap) or `Mod+Space` | App launcher | | `Mod+1`…`9` | Go to workspace |
+| `Mod+S` | Control center | | `Alt+Tab` | Window switcher |
+| `Mod+Shift+S` | Noctalia settings | | `Ctrl+Shift+1/2/3` | Screenshot: region / screen / window |
+| `Mod+Alt+L` | Lock screen | | `Mod+←→↑↓` | Move focus |
+| `Mod+Shift+Q` | Session menu | | | |
 
 <details>
 <summary><b>All keybinds</b></summary>
@@ -126,71 +131,75 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 | `Mod+E` | Nautilus |
 | `Mod+Shift+E` | Zed |
 | **Noctalia** | |
-| `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
+| `Mod` (tap), `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
 | `Mod+S` | Control center |
 | `Mod+Shift+S` or `Mod+Shift+Comma` | Settings |
 | `Mod+Shift+Return` | Wallpaper picker |
 | `Mod+Shift+Q` | Session menu (log out, reboot, shut down) |
 | `Mod+Alt+L` | Lock screen |
 | `Alt+Tab` / `Alt+Shift+Tab` | Window switcher |
+| `Ctrl+Shift+1` / `2` / `3` | Screenshot: region / screen / window |
 | **Windows** | |
 | `Mod+Q` | Close window |
 | `Mod+←→↑↓` or `Mod+H/J/K/L` | Move focus |
 | `Mod+Ctrl+←→↑↓` or `Mod+Ctrl+H/J/K/L` | Move window or column |
 | `Mod+Home` / `Mod+End` | First / last column |
-| `Mod+[` / `Mod+]` | Move window into the column on the left / right |
-| `Mod+,` / `Mod+.` | Take a window into / out of the column |
+| `Mod+Ctrl+Home` / `Mod+Ctrl+End` | Move column to the start / end |
+| `Mod+[` / `Mod+]` | Move window into / out of the column on the left / right |
+| `Mod+,` / `Mod+.` | Pull the next window into the column / push this one out |
 | `Mod+T` | Toggle floating |
 | `Mod+Shift+V` | Switch focus between floating and tiled windows |
 | `Mod+F` / `Mod+Shift+F` / `Mod+M` | Maximise column / fullscreen / maximise to screen edges |
+| `Mod+P` | Pin (keep on top across workspaces) |
 | `Mod+W` | Tabbed column |
+| `Mod+C` | Centre column |
 | `Mod+R` / `Mod+Shift+R` | Cycle column widths |
-| `Mod+Ctrl+R` / `Mod+Ctrl+Shift+R` | Reset / cycle window height |
+| `Mod+Ctrl+Shift+R` / `Mod+Ctrl+R` | Cycle window heights |
 | `Mod+-` / `Mod+=` | Column narrower / wider |
 | `Mod+Shift+-` / `Mod+Shift+=` | Window shorter / taller |
-| `Mod+C` / `Mod+Ctrl+C` / `Mod+Ctrl+F` | Centre column / centre visible columns / fill width |
+| `Mod+Ctrl+F` | Fill the screen width |
+| `Mod+Shift+Space` / `Mod+Ctrl+Space` | Send window to the scratchpad / show or hide the scratchpad |
 | **Workspaces and monitors** | |
-| `Mod+1`…`9` | Go to workspace |
+| `Mod+1`…`9` | Go to workspace (press again to go back) |
 | `Mod+Ctrl+1`…`9` | Move column to workspace |
 | `Mod+Tab` | Previous workspace |
-| `Mod+O` | Overview |
+| `Mod+O` or the top-left screen corner | Overview |
 | `Mod+scroll wheel` | Switch workspace (`+Ctrl` moves the column) |
 | `Mod+Shift+←→↑↓` | Focus another monitor (`+Ctrl` moves the column there) |
 | **System** | |
-| `Ctrl+Shift+1` / `2` / `3` | Screenshot: region / screen / window |
-| `Mod+Shift+P` | Turn monitors off |
+| `Mod+Shift+/` or `Mod+Shift+Escape` | Show all keybinds |
 | `Mod+Escape` | Get your shortcuts back from a fullscreen app that grabbed them |
-| `Mod+Shift+Escape` or `Mod+Shift+/` | Show all keybinds |
-| `Ctrl+Alt+Delete` | Quit niri |
+| `Mod+Shift+P` / `Mod+Ctrl+P` | Monitors off / on |
+| `Ctrl+Alt+Delete` | Quit Umbriel (asks first) |
 | Volume, mic, media and brightness keys | Handled by Noctalia, with on-screen display |
 
 </details>
 
 ## Customising
 
-Edit the files in `~/.config/niri/cfg/`; niri reloads them as soon as you save. Noctalia settings changed in its
+Edit the files in `~/.config/umbriel/cfg/`; Umbriel applies them as soon as you save and shows any mistakes on screen
+(or run `umbriel config validate`). Noctalia settings changed in its
 Settings window are saved separately, in `~/.local/state/noctalia/settings.toml`.
 
 <details>
 <summary><b>Repo layout</b></summary>
 
-The config is split into small files, following
-[CachyOS's niri + Noctalia settings](https://github.com/cachyos/cachyos-niri-noctalia).
+The config is split into small files, based on Umbriel's example config and Noctalia's Umbriel guide.
 
 ```text
 config/                       → copied to ~/.config/
-├── niri/
-│   ├── config.kdl            # just includes the files below
+├── umbriel/
+│   ├── config.toml           # just includes the files below
 │   └── cfg/
-│       ├── animation.kdl     # animation curves and springs
-│       ├── autostart.kdl     # starts Noctalia
-│       ├── blur.kdl          # blur rules (niri 26.04+)
-│       ├── display.kdl       # monitor setup (commented example)
-│       ├── input.kdl         # keyboard, touchpad, mouse
-│       ├── keybinds.kdl      # all keybinds
-│       ├── layout.kdl        # gaps, column widths
-│       ├── misc.kdl          # environment variables, cursor, screenshots
-│       └── rules.kdl         # window and layer rules
+│       ├── general.toml      # autostart, workspaces, hot corner
+│       ├── environment.toml  # environment variables (Qt theme, Electron)
+│       ├── input.toml        # keyboard, touchpad, mouse, cursor
+│       ├── appearance.toml   # borders, rounded corners
+│       ├── layout.toml       # scrolling layout, gaps, column widths
+│       ├── rules.toml        # window rules
+│       ├── blur.toml         # blur (left out with --no-blur)
+│       ├── keybinds.toml     # all keybinds
+│       └── outputs.toml      # monitor setup (commented example)
 └── noctalia/
     └── config.toml           # polkit agent, colour templates
 etc/dconf/                    → copied to /etc/dconf/ (GTK theme, cursor defaults)
@@ -208,8 +217,8 @@ git pull
 ./install-niri-noctalia.sh
 ```
 
-Re-running only changes what's different. If the repo's niri or Noctalia config has changed and you've edited
-yours, your version is moved to `~/.config/niri.bak.<timestamp>` (or `config.toml.bak.<timestamp>`) first, so you can
+Re-running only changes what's different. If the repo's Umbriel or Noctalia config has changed and you've edited
+yours, your version is moved to `~/.config/umbriel.bak.<timestamp>` (or `config.toml.bak.<timestamp>`) first, so you can
 copy your changes back.
 
 ## After installing
@@ -225,7 +234,7 @@ copy your changes back.
 | A step failed | Press **r** to retry, or check `~/arch-niri-noctalia-install.log`. Run with `--verbose` to watch the output live. |
 | AMD step says *skipped* | The start screen says whether an AMD GPU was found. Use `--amd-gpu` to force it. |
 | Saved passwords keep asking to be unlocked | Open *Passwords and Keys* and make sure the **Login** keyring's password matches your login password. |
-| niri won't start after editing the config | Run `niri validate` to see the error. Your previous config is in `~/.config/niri.bak.*`. |
+| Umbriel ignores your config edits | Run `umbriel config validate` to see the error. Your previous config is in `~/.config/umbriel.bak.*`. |
 
 > **About the sudo password:** while the installer runs, it's kept in a file only your user can read, in your
 > runtime folder (in memory, not on disk), so build tools like `makepkg` can use it. It's deleted when the
@@ -234,16 +243,16 @@ copy your changes back.
 ## Testing
 
 On every push, and every Monday, a [GitHub test](.github/workflows/install-test.yml) runs the installer in an Arch
-Linux container with real packages, validates the niri config with niri, and checks the installed files and apps.
+Linux container with real packages, validates the Umbriel config with Umbriel, and checks the installed files and apps.
 A container can't boot or test the login screen and GPU, so the first install on real hardware is the final check.
 
 ## Credits
 
-The niri config layout, keybinds, animations, rules and dconf defaults are based on
-[cachyos/cachyos-niri-noctalia](https://github.com/cachyos/cachyos-niri-noctalia) (GPL-3.0), with changes:
-kitty, Helium and Zed binds, Noctalia's documented binds, qt5ct/qt6ct theming, blur in its own file, and Noctalia
-colour templates. Blur and keybind recommendations also come from [Noctalia's docs](https://github.com/noctalia-dev/noctalia).
+- [Umbriel](https://github.com/noctalia-dev/umbriel) and [Noctalia](https://github.com/noctalia-dev/noctalia) by the
+  Noctalia developers. The Umbriel config is based on Umbriel's example config and Noctalia's Umbriel guide.
+- The keybind layout and the dconf defaults come from
+  [cachyos/cachyos-niri-noctalia](https://github.com/cachyos/cachyos-niri-noctalia) (GPL-3.0), originally for niri.
 
 ## License
 
-[GPL-3.0](LICENSE). The config files are derived from GPL-3.0 work, so the whole repo uses the same licence.
+[GPL-3.0](LICENSE). Parts are derived from GPL-3.0 work (see Credits), so the whole repo uses the same licence.

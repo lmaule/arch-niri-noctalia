@@ -374,7 +374,15 @@ step_desktop() {
     xdg-desktop-portal-gtk kitty \
     btop fastfetch hwdata \
     pipewire wireplumber pipewire-pulse \
-    polkit upower
+    polkit upower ddcutil
+
+  # ddcutil: brightness control for external monitors over DDC/CI (Noctalia's
+  # brightness keys and slider; switched on in config/noctalia/config.toml).
+  # The package loads the i2c-dev module at boot and gives the logged-in user
+  # access; load it now too so it works before the next reboot.
+  if [[ -d /run/systemd/system ]]; then
+    sudo modprobe i2c-dev || warn "Couldn't load the i2c-dev module now; it loads at the next boot."
+  fi
 }
 
 step_zsh() {

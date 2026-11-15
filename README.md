@@ -68,7 +68,7 @@ After rebooting, choose the **Umbriel** session at the Noctalia login screen.
 
 | Area | Packages |
 |---|---|
-| Desktop | Umbriel¹ (with its screen-sharing portal and Xwayland), `noctalia`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower` |
+| Desktop | Umbriel¹ (with its screen-sharing portal and Xwayland), `noctalia`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower`, `ddcutil` |
 | Login screen | `greetd`, `noctalia-greeter` |
 | AMD GPU | `mesa`, `vulkan-radeon`, `linux-firmware-amdgpu`, 32-bit drivers, `lact`, `rocm-smi-lib`, `vulkan-tools`, `mesa-utils`, `libva-utils` |
 | Terminal & shell | `kitty`, `zsh` (completions, autosuggestions, syntax highlighting), `starship`, `btop`, `fastfetch` |
@@ -90,6 +90,7 @@ AUR packages are maintained by the community, not by the app developers. If no A
 - **Noctalia** gets `config/noctalia/config.toml`: its polkit agent (password prompts for apps) and colour templates.
 - **Login screen:** greetd runs the Noctalia greeter, and any previous display manager is disabled.
 - **Screenshots** are taken by Noctalia, saved to `~/Pictures/Screenshots` and copied to the clipboard.
+- **Monitor brightness:** Noctalia's brightness keys and slider also work on external monitors that support DDC/CI (via `ddcutil`).
 
 **Look and feel**
 - GTK apps use `adw-gtk3`, Qt apps use qt5ct/qt6ct, with the capitaine cursor theme.

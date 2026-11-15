@@ -5,6 +5,11 @@
 [shell]
 polkit_agent = true  # password prompts for apps that need admin rights
 
+# Brightness for external monitors over DDC/CI (ddcutil). Laptop screens still
+# use their built-in backlight; this only adds monitors that support DDC/CI.
+[brightness]
+enable_ddcutil = true
+
 # Colour GTK, Qt, kitty and btop to match Noctalia (same as Settings -> Templates).
 # Run `noctalia theme --list-templates` to see the others.
 [theme.templates]

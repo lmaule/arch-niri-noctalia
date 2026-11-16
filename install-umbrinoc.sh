@@ -576,6 +576,33 @@ step_helium() {
   fi
 }
 
+# Do Steam's first-run data setup now, exactly as its launcher would.
+# Steam expects ~/.steam/steam to be a symlink to ~/.local/share/Steam. If
+# anything creates ~/.steam/steam as a plain folder first, Steam's launcher
+# puts its link *inside* that folder and then fails with "Couldn't set up
+# Steam data". Setting it up here makes the link exist before any other tool
+# (or a first launch) can touch it, and moves a stray folder out of the way.
+setup_steam_data() {
+  local boot=/usr/lib/steam/bootstraplinux_ubuntu12_32.tar.xz
+  local data="${XDG_DATA_HOME:-$HOME/.local/share}/Steam" link="$HOME/.steam/steam" bak
+  [[ -f $boot ]] || return 0
+  if [[ -x "$(readlink -f "$link" 2>/dev/null)/steam.sh" ]]; then
+    info "Steam's data folder is already set up"
+    return 0
+  fi
+  mkdir -p "$HOME/.steam"
+  if [[ -e $link && ! -L $link ]]; then
+    bak="$link.bak.$(date +%Y%m%d-%H%M%S)"
+    warn "$link was a plain folder, which stops Steam starting; moved it to $bak"
+    mv "$link" "$bak"
+  fi
+  if [[ ! -x $data/steam.sh ]]; then
+    info "Setting up Steam's data folder ($data)"
+    ( umask 077; mkdir -p "$data" && tar -xJf "$boot" -C "$data" )
+  fi
+  ln -sfn "$data" "$link"
+}
+
 # Apps: Steam, Discord, Spotify, ProtonPlus, Claude Desktop (no Flatpak).
 # Each app is optional: a failure is reported in the summary, not fatal.
 step_apps() {
@@ -587,8 +614,11 @@ step_apps() {
     steam_pkgs=(steam)
     if [[ $AMD_GPU == yes ]]; then steam_pkgs+=(lib32-mesa lib32-vulkan-radeon); fi
     info "Installing Steam"
-    sudo pacman -S --needed --noconfirm "${steam_pkgs[@]}" \
-      || warn "Steam failed to install — skipped. See the log for details."
+    if sudo pacman -S --needed --noconfirm "${steam_pkgs[@]}"; then
+      setup_steam_data || warn "Couldn't pre-set up Steam's data folder; Steam will do it on first launch."
+    else
+      warn "Steam failed to install — skipped. See the log for details."
+    fi
   else
     warn "[multilib] is not enabled — Steam skipped."
   fi

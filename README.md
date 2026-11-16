@@ -234,6 +234,7 @@ copy your changes back.
 |---|---|
 | A step failed | Press **r** to retry, or check `~/umbrinoc-install.log`. Run with `--verbose` to watch the output live. |
 | AMD step says *skipped* | The start screen says whether an AMD GPU was found. Use `--amd-gpu` to force it. |
+| Steam says *Couldn't set up Steam data* | Something made `~/.steam/steam` a plain folder instead of a link. Re-run the installer (it fixes this and keeps a backup), or run `mv ~/.steam ~/.steam.old` and start Steam again. |
 | Saved passwords keep asking to be unlocked | Open *Passwords and Keys* and make sure the **Login** keyring's password matches your login password. |
 | Umbriel ignores your config edits | Run `umbriel config validate` to see the error. Your previous config is in `~/.config/umbriel.bak.*`. |
 

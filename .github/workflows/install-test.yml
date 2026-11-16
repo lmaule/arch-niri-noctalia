@@ -63,7 +63,7 @@ jobs:
           for p in umbriel-git xdg-desktop-portal-umbriel-git noctalia noctalia-greeter kitty zsh nautilus steam discord \
                    spotify helium-browser-bin protonplus claude-desktop lact \
                    mangohud lib32-mangohud goverlay faugus-launcher vm-curator-bin swtpm edk2-ovmf \
-                   qbittorrent zed ddcutil; do
+                   qbittorrent zed ddcutil quickshell; do
             pacman -Q "$p"
           done
 

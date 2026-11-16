@@ -374,7 +374,8 @@ step_desktop() {
     xdg-desktop-portal-gtk kitty \
     btop fastfetch hwdata \
     pipewire wireplumber pipewire-pulse \
-    polkit upower ddcutil
+    polkit upower ddcutil \
+    quickshell   # QtQuick toolkit for custom widgets and Quickshell-based shells
 
   # ddcutil: brightness control for external monitors over DDC/CI (Noctalia's
   # brightness keys and slider; switched on in config/noctalia/config.toml).

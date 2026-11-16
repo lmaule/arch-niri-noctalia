@@ -68,7 +68,7 @@ After rebooting, choose the **Umbriel** session at the Noctalia login screen.
 
 | Area | Packages |
 |---|---|
-| Desktop | Umbriel¹ (with its screen-sharing portal and Xwayland), `noctalia`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower`, `ddcutil` |
+| Desktop | Umbriel¹ (with its screen-sharing portal and Xwayland), `noctalia`, `xdg-desktop-portal-gtk`, PipeWire, `polkit`, `upower`, `ddcutil`, `quickshell` |
 | Login screen | `greetd`, `noctalia-greeter` |
 | AMD GPU | `mesa`, `vulkan-radeon`, `linux-firmware-amdgpu`, 32-bit drivers, `lact`, `rocm-smi-lib`, `vulkan-tools`, `mesa-utils`, `libva-utils` |
 | Terminal & shell | `kitty`, `zsh` (completions, autosuggestions, syntax highlighting), `starship`, `btop`, `fastfetch` |

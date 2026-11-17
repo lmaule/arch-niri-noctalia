@@ -73,13 +73,13 @@ After rebooting, choose the **Umbriel** session at the Noctalia login screen.
 | AMD GPU | `mesa`, `vulkan-radeon`, `linux-firmware-amdgpu`, 32-bit drivers, `lact`, `rocm-smi-lib`, `vulkan-tools`, `mesa-utils`, `libva-utils` |
 | Terminal & shell | `kitty`, `zsh` (completions, autosuggestions, syntax highlighting), `starship`, `btop`, `fastfetch` |
 | Fonts | `noto-fonts`, `noto-fonts-cjk`, `noto-fonts-emoji`, `ttf-jetbrains-mono-nerd`, Nerd Font symbols |
-| Files | `nautilus`, `xdg-user-dirs`, `gvfs` (phones, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, `ffmpegthumbnailer` |
+| Files | Luciole¹, `xdg-user-dirs`, `gvfs` (phones, SMB, NFS, network discovery, iPhone, cameras), `avahi`, `nss-mdns`, thumbnail/archive helpers (`ffmpeg`, `ffmpegthumbnailer`, `poppler`, `7zip`), `xdg-terminal-exec` |
 | Passwords | `gnome-keyring`, `libsecret`, `seahorse` |
 | Theming | `adw-gtk-theme`, `nwg-look`, `qt5ct`, `qt6ct`, `capitaine-cursors`, `dconf` |
 | Apps | Helium¹, Steam, Discord, Spotify¹, ProtonPlus¹, Claude Desktop¹, `qbittorrent`, `zed` |
 | Gaming & VMs | `mangohud`, `goverlay`, Faugus Launcher¹, VM Curator¹ (+ `edk2-ovmf` and `swtpm` for UEFI / Windows 11 VMs) |
 
-¹ From the AUR (`umbriel-git`, `helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
+¹ From the AUR (`umbriel-git`, `luciole-git`, `helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
 AUR packages are maintained by the community, not by the app developers. If no AUR helper is installed, `paru` is set up first.
 To save time, AUR packages are built without debug info, link-time optimisation or test suites (your own `makepkg.conf` isn't changed).
 
@@ -100,8 +100,9 @@ To save time, AUR packages are built without debug info, link-time optimisation 
 
 **Everyday details**
 - Your login password unlocks GNOME Keyring, and `passwd` keeps the two in sync.
-- Helium is the default browser, and Nautilus opens folders.
-- Nautilus's sidebar lists Documents, Downloads, Music, Pictures and Videos, as on GNOME.
+- Helium is the default browser. [Luciole](https://docs.noctalia.dev/luciole/), Noctalia's file manager, opens folders
+  and is also the Open/Save dialog in other apps, in Noctalia's colours.
+- Luciole's sidebar lists Documents, Downloads, Music, Pictures and Videos, and its "Open Terminal Here" uses kitty.
 - Network shares are discoverable, and `.local` hostnames resolve.
 
 Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and re-running it is safe.
@@ -114,7 +115,7 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 |---|---|---|---|---|
 | `Mod+Return` | Terminal (kitty) | | `Mod+Q` | Close window |
 | `Mod+B` | Browser (Helium) | | `Mod+T` | Toggle floating |
-| `Mod+E` | Files (Nautilus) | | `Mod+F` | Maximise column |
+| `Mod+E` | Files (Luciole) | | `Mod+F` | Maximise column |
 | `Mod+Shift+E` | Text editor (Zed) | | `Mod+O` | Overview |
 | `Mod` (tap) or `Mod+Space` | App launcher | | `Mod+1`…`9` | Go to workspace |
 | `Mod+S` | Control center | | `Alt+Tab` | Window switcher |
@@ -130,7 +131,7 @@ Every system file it edits is backed up first as `<file>.bak.<timestamp>`, and r
 | **Apps** | |
 | `Mod+Return` | kitty |
 | `Mod+B` | Helium |
-| `Mod+E` | Nautilus |
+| `Mod+E` | Luciole |
 | `Mod+Shift+E` | Zed |
 | **Noctalia** | |
 | `Mod` (tap), `Mod+Space` or `Mod+Ctrl+Return` | Launcher |
@@ -202,8 +203,10 @@ config/                       → copied to ~/.config/
 │       ├── blur.toml         # blur (left out with --no-blur)
 │       ├── keybinds.toml     # all keybinds
 │       └── outputs.toml      # monitor setup (commented example)
-└── noctalia/
-    └── config.toml           # polkit agent, colour templates
+├── noctalia/
+│   └── config.toml           # polkit agent, colour templates
+└── xdg-desktop-portal/
+    └── umbriel-portals.conf  # Luciole as the Open/Save file picker
 etc/dconf/                    → copied to /etc/dconf/ (GTK theme, cursor defaults)
 .github/workflows/            # the install test
 install-umbrinoc.sh
@@ -236,6 +239,7 @@ copy your changes back.
 | A step failed | Press **r** to retry, or check `~/umbrinoc-install.log`. Run with `--verbose` to watch the output live. |
 | AMD step says *skipped* | The start screen says whether an AMD GPU was found. Use `--amd-gpu` to force it. |
 | Steam says *Couldn't set up Steam data* | Something made `~/.steam/steam` a plain folder instead of a link. Re-run the installer (it fixes this and keeps a backup), or run `mv ~/.steam ~/.steam.old` and start Steam again. |
+| Open/Save dialogs in apps don't appear | Luciole is still young. Delete the `FileChooser` line in `~/.config/xdg-desktop-portal/umbriel-portals.conf`, then log out and back in, to use GTK's dialog instead. |
 | Saved passwords keep asking to be unlocked | Open *Passwords and Keys* and make sure the **Login** keyring's password matches your login password. |
 | Umbriel ignores your config edits | Run `umbriel config validate` to see the error. Your previous config is in `~/.config/umbriel.bak.*`. |
 

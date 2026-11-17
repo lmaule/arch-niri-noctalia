@@ -55,13 +55,16 @@ jobs:
           test -f $h/.config/kitty/kitty.conf
           test -f $h/.config/starship.toml
           test -d $h/Pictures/Screenshots
-          grep -q "file://$h/Documents" $h/.config/gtk-3.0/bookmarks   # Nautilus sidebar
+          grep -q "file://$h/Documents" $h/.config/gtk-3.0/bookmarks   # Luciole's sidebar
+          grep -q 'FileChooser=luciole' $h/.config/xdg-desktop-portal/umbriel-portals.conf
+          grep -q '"luciole"' $h/.config/noctalia/config.toml
+          grep -q 'kitty.desktop' $h/.config/xdg-terminals.list
           grep -q 'pam_gnome_keyring.so' /etc/pam.d/greetd
           grep -q 'noctalia-greeter-session' /etc/greetd/config.toml
           getent passwd tester | grep -q '/usr/bin/zsh$'
           test -L $h/.steam/steam && test -x $h/.local/share/Steam/steam.sh   # Steam's data pre-set up
           test -f /usr/share/wayland-sessions/umbriel.desktop          # listed at the login screen
-          for p in umbriel-git xdg-desktop-portal-umbriel-git noctalia noctalia-greeter kitty zsh nautilus steam discord \
+          for p in umbriel-git xdg-desktop-portal-umbriel-git noctalia noctalia-greeter kitty zsh luciole-git xdg-terminal-exec 7zip steam discord \
                    spotify helium-browser-bin protonplus claude-desktop lact \
                    mangohud lib32-mangohud goverlay faugus-launcher vm-curator-bin swtpm edk2-ovmf \
                    qbittorrent zed ddcutil quickshell; do

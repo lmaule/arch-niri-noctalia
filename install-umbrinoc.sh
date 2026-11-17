@@ -310,8 +310,12 @@ PKGS_ZSH=(zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting starsh
 #   ttf-nerd-fonts-symbols:  icon fallback so any font can show Nerd Font glyphs
 PKGS_FONTS=(noto-fonts noto-fonts-cjk noto-fonts-emoji
             ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono)
-PKGS_FILES=(nautilus xdg-user-dirs xdg-utils
-            gvfs gvfs-mtp gvfs-smb gvfs-nfs gvfs-dnssd avahi nss-mdns)
+# Luciole (the file manager) is built from the AUR in step_files. These are
+# GVfs (Trash, phones, network shares) and Luciole's optional helpers: video and
+# PDF thumbnails, 7z archives, network TLS and terminal actions.
+PKGS_FILES=(xdg-user-dirs xdg-utils
+            gvfs gvfs-mtp gvfs-smb gvfs-nfs gvfs-dnssd avahi nss-mdns
+            ffmpeg poppler 7zip glib-networking xdg-terminal-exec)
 # Optional extras, only installed if your repos have them:
 #   gvfs-wsdd: find Windows (SMB) machines   gvfs-afc: iPhone/iPad files
 #   gvfs-gphoto2: cameras (PTP)              ffmpegthumbnailer: video thumbnails
@@ -532,10 +536,16 @@ step_fonts() {
   fi
 }
 
-# File manager, user dirs, MTP & network shares
+# File manager (Luciole), user dirs, MTP & network shares
 step_files() {
-  local p
-  info "Installing Nautilus, XDG user dirs, MTP and network share support"
+  local p terminals
+  if pacman -Qq nautilus &>/dev/null && [[ $REMOVE_NAUTILUS -eq 1 ]]; then
+    info "Removing Nautilus (replaced by Luciole)"
+    sudo pacman -Rns --noconfirm nautilus \
+      || warn "Couldn't remove Nautilus (another package may need it); it's left installed."
+  fi
+
+  info "Installing XDG user dirs, MTP and network share support"
   sudo pacman -S --needed --noconfirm "${PKGS_FILES[@]}"
   # Optional extras (see PKGS_FILES_OPTIONAL), only if your repos have them.
   for p in "${PKGS_FILES_OPTIONAL[@]}"; do
@@ -544,10 +554,15 @@ step_files() {
     fi
   done
 
+  # Luciole: Noctalia's file manager, only packaged as luciole-git (AUR),
+  # built from its latest code.
+  info "Installing Luciole (luciole-git from the AUR)"
+  install_pkg luciole-git
+
   # Create ~/Desktop, ~/Documents, ~/Downloads, ~/Music, ~/Pictures, ~/Videos, ...
   xdg-user-dirs-update
 
-  # Nautilus's sidebar shows the folders listed in ~/.config/gtk-3.0/bookmarks.
+  # Luciole's sidebar (Places) shows the folders in ~/.config/gtk-3.0/bookmarks.
   # GNOME fills that in at login with xdg-user-dirs-gtk, which needs a running
   # GNOME-style session (Umbriel doesn't run it), so add the same entries here.
   # Your own bookmarks are kept; entries already there aren't added twice.
@@ -559,15 +574,24 @@ step_files() {
     [[ -n $dir && $dir != "$HOME" && -d $dir ]] || continue
     uri="file://${dir// /%20}"
     if ! awk -v u="$uri" '$1 == u { found = 1 } END { exit !found }' "$bookmarks"; then
-      info "Adding $dir to Nautilus's sidebar"
+      info "Adding $dir to the file manager's sidebar"
       printf '%s\n' "$uri" >> "$bookmarks"
     fi
   done
 
-  # Make Nautilus the default app for opening folders.
-  xdg-mime default org.gnome.Nautilus.desktop inode/directory
+  # Make Luciole the default app for opening folders.
+  xdg-mime default dev.noctalia.luciole.desktop inode/directory
 
-  # Avahi: lets Nautilus's "Network" view find shares and printers on the LAN.
+  # Terminal for Luciole's "Open Terminal Here" (and other apps that ask
+  # xdg-terminal-exec): kitty. Skipped if you've already chosen one.
+  terminals="${XDG_CONFIG_HOME:-$HOME/.config}/xdg-terminals.list"
+  if [[ ! -f $terminals ]]; then
+    info "Setting kitty as the terminal for 'Open Terminal Here' ($terminals)"
+    mkdir -p "$(dirname "$terminals")"
+    printf '# Created by install-umbrinoc.sh\nkitty.desktop\n' > "$terminals"
+  fi
+
+  # Avahi: lets the file manager find shares and printers on the LAN.
   svc_enable avahi-daemon.service
 
   # nss-mdns: resolve *.local hostnames (e.g. smb://nas.local).
@@ -814,6 +838,12 @@ step_config() {
   noctalia_dir="$cfg_home/noctalia"
   mkdir -p "$noctalia_dir"
   install_config "$REPO_DIR/config/noctalia/config.toml" "$noctalia_dir/config.toml"
+
+  # Desktop portals: Luciole as the Open/Save file picker for other apps.
+  # This replaces Umbriel's packaged umbriel-portals.conf, so it repeats its
+  # default (Umbriel's portal, then GTK's). Applies from the next login.
+  install_config "$REPO_DIR/config/xdg-desktop-portal/umbriel-portals.conf" \
+    "$cfg_home/xdg-desktop-portal/umbriel-portals.conf"
   # Files older versions of this script wrote, now part of config.toml.
   for old in polkit.toml theming.toml; do
     if [[ -f $noctalia_dir/$old ]] && grep -q 'install-niri-noctalia\|install-umbrinoc\|polkit_agent' "$noctalia_dir/$old"; then
@@ -908,7 +938,7 @@ STEP_TITLE=(
   "Umbriel and desktop tools"
   "zsh, Starship and fastfetch"
   "Fonts"
-  "Nautilus, phones and network shares"
+  "Luciole, phones and network shares"
   "Helium browser"
   "Apps (Steam, Discord, Spotify, Zed, ...)"
   "MangoHud, GOverlay, Faugus, VM Curator"
@@ -1116,7 +1146,7 @@ if [[ $AMD_GPU == yes ]]; then
 else
   printf '   %s%s No AMD GPU found, so the AMD driver step will be skipped (use --amd-gpu to force it).%s\n' "$MUT" "$SYM_DOT" "$RST"
 fi
-printf '   %s%s%s kitty, zsh + Starship, fonts, Nautilus, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
+printf '   %s%s%s kitty, zsh + Starship, fonts, Luciole, GNOME Keyring, GTK/Qt theming\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s Helium, Steam, Discord, Spotify, ProtonPlus, Claude Desktop, qBittorrent, Zed\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s MangoHud, GOverlay, Faugus Launcher, VM Curator\n' "$ACC" "$SYM_DOT" "$RST"
 printf '   %s%s%s your Umbriel + Noctalia config (an existing one is backed up first)\n\n' "$ACC" "$SYM_DOT" "$RST"
@@ -1135,6 +1165,10 @@ fi
 REMOVE_NIRI=0
 if pacman -Qq niri &>/dev/null; then
   confirm "Remove niri? (replaced by Umbriel; your ~/.config/niri is kept)" && REMOVE_NIRI=1
+fi
+REMOVE_NAUTILUS=0
+if pacman -Qq nautilus &>/dev/null; then
+  confirm "Remove Nautilus? (replaced by Luciole)" && REMOVE_NAUTILUS=1
 fi
 REMOVE_SPOTIFY_LAUNCHER=0
 if pacman -Qq spotify-launcher &>/dev/null; then

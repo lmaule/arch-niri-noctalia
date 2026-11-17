@@ -19,7 +19,7 @@
 # ─── Applications ───
 "Mod+Return" = { action = "spawn kitty", repeat = false }
 "Mod+B" = { action = "spawn helium-browser", repeat = false }
-"Mod+E" = { action = "spawn nautilus", repeat = false }
+"Mod+E" = { action = "spawn luciole", repeat = false }
 "Mod+Shift+E" = { action = "spawn zeditor", repeat = false }      # Zed (Arch names it zeditor)
 
 # ─── Noctalia ───

@@ -293,12 +293,85 @@ install_config() {
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  Package lists from the official repos. step_packages installs them all in
+#  one pacman run (so post-install hooks run once); each step still installs
+#  its own list with --needed, which is a no-op after that, or the fallback if
+#  the one-go install failed.
+# ═════════════════════════════════════════════════════════════════════════════
+
+PKGS_DESKTOP=(xdg-desktop-portal-gtk kitty btop fastfetch hwdata
+              pipewire wireplumber pipewire-pulse polkit upower ddcutil
+              quickshell)   # quickshell: QtQuick toolkit for custom widgets and Quickshell-based shells
+PKGS_ZSH=(zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting starship)
+#   noto-fonts:              main UI font, wide language coverage
+#   noto-fonts-cjk:          Chinese / Japanese / Korean
+#   noto-fonts-emoji:        colour emoji (Noctalia's launcher has an emoji picker)
+#   ttf-jetbrains-mono-nerd: coding font with Nerd Font icons, used for kitty
+#   ttf-nerd-fonts-symbols:  icon fallback so any font can show Nerd Font glyphs
+PKGS_FONTS=(noto-fonts noto-fonts-cjk noto-fonts-emoji
+            ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono)
+PKGS_FILES=(nautilus xdg-user-dirs xdg-utils
+            gvfs gvfs-mtp gvfs-smb gvfs-nfs gvfs-dnssd avahi nss-mdns)
+# Optional extras, only installed if your repos have them:
+#   gvfs-wsdd: find Windows (SMB) machines   gvfs-afc: iPhone/iPad files
+#   gvfs-gphoto2: cameras (PTP)              ffmpegthumbnailer: video thumbnails
+PKGS_FILES_OPTIONAL=(gvfs-wsdd gvfs-afc gvfs-gphoto2 ffmpegthumbnailer)
+PKGS_APPS=(discord qbittorrent zed)       # optional apps from the repos
+PKGS_GAMING=(mangohud goverlay edk2-ovmf swtpm)
+PKGS_KEYRING=(gnome-keyring libsecret seahorse)
+PKGS_THEMING=(adw-gtk-theme nwg-look qt5ct qt6ct capitaine-cursors dconf)
+
+# AMD driver packages -> AMD_PKGS (needs multilib already decided).
+amd_packages() {
+  local fw_pkg=linux-firmware
+  # Newer Arch splits AMD firmware into linux-firmware-amdgpu.
+  if pacman -Si linux-firmware-amdgpu &>/dev/null; then fw_pkg=linux-firmware-amdgpu; fi
+  AMD_PKGS=("$fw_pkg" mesa vulkan-radeon vulkan-icd-loader libva-utils vulkan-tools mesa-utils
+            rocm-smi-lib)  # rocm-smi-lib: GPU usage/temps in btop
+  if multilib_enabled; then
+    AMD_PKGS+=(lib32-mesa lib32-vulkan-radeon lib32-vulkan-icd-loader)
+  fi
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  Steps — each runs in its own subshell with `set -e`; output goes to the log
 # ═════════════════════════════════════════════════════════════════════════════
 
 step_update() {
   info "Updating system and installing base tools"
   sudo pacman -Syu --needed --noconfirm base-devel git
+}
+
+# Every official-repo package in one pacman run. Never fails the install: if
+# this run fails, each later step installs its own packages as before.
+step_packages() {
+  local -a all=()
+  local p
+  ensure_multilib || true   # Steam and the 32-bit drivers need it
+
+  all+=("${PKGS_DESKTOP[@]}" "${PKGS_ZSH[@]}" "${PKGS_FONTS[@]}" "${PKGS_FILES[@]}"
+        "${PKGS_GAMING[@]}" "${PKGS_KEYRING[@]}" "${PKGS_THEMING[@]}")
+  for p in "${PKGS_FILES_OPTIONAL[@]}" "${PKGS_APPS[@]}" "$SHELL_PKG"; do
+    if pacman -Si "$p" &>/dev/null; then all+=("$p"); fi
+  done
+  if [[ $AMD_GPU == yes ]]; then
+    amd_packages
+    all+=("${AMD_PKGS[@]}" lact)
+  fi
+  if multilib_enabled; then
+    all+=(steam lib32-mangohud)
+    if [[ $AMD_GPU == yes ]]; then all+=(lib32-mesa lib32-vulkan-radeon); fi
+  fi
+  if [[ $WITH_GREETER -eq 1 ]]; then
+    all+=(greetd)
+    if pacman -Si "$GREETER_PKG" &>/dev/null; then all+=("$GREETER_PKG"); fi
+  fi
+
+  info "Installing ${#all[@]} packages from the Arch repos in one go"
+  if ! sudo pacman -S --needed --noconfirm "${all[@]}"; then
+    info "The one-go install didn't work; each step will install its own packages instead."
+  fi
+  return 0
 }
 
 step_aur() {
@@ -308,8 +381,7 @@ step_aur() {
 
 # AMD GPU drivers (RX 9000 / RDNA 4, e.g. RX 9070 XT)
 step_amd() {
-  local kver fw_pkg mesa_ver p
-  local -a pkgs
+  local kver mesa_ver p
   info "Installing AMD GPU drivers (amdgpu kernel driver + Mesa RADV/radeonsi)"
 
   # Kernel: RDNA 4 needs 6.13+, 6.14+ recommended.
@@ -321,16 +393,8 @@ step_amd() {
   # 32-bit drivers (Steam, Wine/Proton) need the multilib repo.
   ensure_multilib || true
 
-  # Firmware: newer Arch splits AMD firmware into linux-firmware-amdgpu.
-  fw_pkg=linux-firmware
-  pacman -Si linux-firmware-amdgpu &>/dev/null && fw_pkg=linux-firmware-amdgpu
-
-  pkgs=("$fw_pkg" mesa vulkan-radeon vulkan-icd-loader libva-utils vulkan-tools mesa-utils
-        rocm-smi-lib)  # rocm-smi-lib: GPU usage/temps in btop
-  if multilib_enabled; then
-    pkgs+=(lib32-mesa lib32-vulkan-radeon lib32-vulkan-icd-loader)
-  fi
-  sudo pacman -S --needed --noconfirm "${pkgs[@]}"
+  amd_packages
+  sudo pacman -S --needed --noconfirm "${AMD_PKGS[@]}"
 
   # AMDVLK is discontinued and can override RADV — remove it if you said yes.
   for p in amdvlk lib32-amdvlk; do
@@ -370,12 +434,7 @@ step_desktop() {
   info "Installing Umbriel (umbriel-git from the AUR; this build takes a few minutes)"
   install_pkg umbriel-git
   info "Installing desktop companion packages"
-  sudo pacman -S --needed --noconfirm \
-    xdg-desktop-portal-gtk kitty \
-    btop fastfetch hwdata \
-    pipewire wireplumber pipewire-pulse \
-    polkit upower ddcutil \
-    quickshell   # QtQuick toolkit for custom widgets and Quickshell-based shells
+  sudo pacman -S --needed --noconfirm "${PKGS_DESKTOP[@]}"
 
   # ddcutil: brightness control for external monitors over DDC/CI (Noctalia's
   # brightness keys and slider; switched on in config/noctalia/config.toml).
@@ -389,8 +448,7 @@ step_desktop() {
 step_zsh() {
   local starship_cfg
   info "Installing zsh"
-  sudo pacman -S --needed --noconfirm \
-    zsh zsh-completions zsh-autosuggestions zsh-syntax-highlighting starship
+  sudo pacman -S --needed --noconfirm "${PKGS_ZSH[@]}"
 
   # Starter ~/.zshrc (skipped if you already have one). Without it, zsh opens a
   # first-run setup wizard the first time you start it.
@@ -461,15 +519,8 @@ EOF
 
 step_fonts() {
   local kitty_cfg
-  #   noto-fonts:              main UI font, wide language coverage
-  #   noto-fonts-cjk:          Chinese / Japanese / Korean
-  #   noto-fonts-emoji:        colour emoji (Noctalia's launcher has an emoji picker)
-  #   ttf-jetbrains-mono-nerd: coding font with Nerd Font icons, used for kitty
-  #   ttf-nerd-fonts-symbols:  icon fallback so any font can show Nerd Font glyphs
   info "Installing fonts"
-  sudo pacman -S --needed --noconfirm \
-    noto-fonts noto-fonts-cjk noto-fonts-emoji \
-    ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols ttf-nerd-fonts-symbols-mono
+  sudo pacman -S --needed --noconfirm "${PKGS_FONTS[@]}"
   fc-cache -f
 
   # Use JetBrains Mono Nerd Font in kitty, unless you've already picked a font.
@@ -485,18 +536,9 @@ step_fonts() {
 step_files() {
   local p
   info "Installing Nautilus, XDG user dirs, MTP and network share support"
-  sudo pacman -S --needed --noconfirm \
-    nautilus \
-    xdg-user-dirs xdg-utils \
-    gvfs gvfs-mtp gvfs-smb gvfs-nfs gvfs-dnssd \
-    avahi nss-mdns
-
-  # Optional extras — only installed if your repos have them.
-  #   gvfs-wsdd:          discover Windows (SMB) machines on the network
-  #   gvfs-afc:           iPhone/iPad file access
-  #   gvfs-gphoto2:       cameras (PTP)
-  #   ffmpegthumbnailer:  video thumbnails in Nautilus
-  for p in gvfs-wsdd gvfs-afc gvfs-gphoto2 ffmpegthumbnailer; do
+  sudo pacman -S --needed --noconfirm "${PKGS_FILES[@]}"
+  # Optional extras (see PKGS_FILES_OPTIONAL), only if your repos have them.
+  for p in "${PKGS_FILES_OPTIONAL[@]}"; do
     if pacman -Si "$p" &>/dev/null; then
       sudo pacman -S --needed --noconfirm "$p"
     fi
@@ -667,7 +709,7 @@ step_apps() {
 #                    no Rust build; the source package is the fallback); edk2-ovmf
 #                    adds UEFI boot and swtpm a TPM, both needed for Windows 11 VMs
 step_gaming_vms() {
-  local -a pkgs=(mangohud goverlay edk2-ovmf swtpm)
+  local -a pkgs=("${PKGS_GAMING[@]}")
   if multilib_enabled; then pkgs+=(lib32-mangohud); fi
   info "Installing MangoHud, GOverlay and VM firmware (UEFI/TPM)"
   sudo pacman -S --needed --noconfirm "${pkgs[@]}" \
@@ -681,7 +723,7 @@ step_gaming_vms() {
 step_keyring() {
   local login_pam f
   info "Installing GNOME Keyring"
-  sudo pacman -S --needed --noconfirm gnome-keyring libsecret seahorse
+  sudo pacman -S --needed --noconfirm "${PKGS_KEYRING[@]}"
 
   # Which PAM service handles your login: greetd (greeter) or login (TTY).
   if [[ $WITH_GREETER -eq 1 ]]; then
@@ -713,7 +755,7 @@ step_noctalia() {
 step_theming() {
   local v qtct_cfg
   info "Installing GTK/Qt theming tools and cursor theme"
-  sudo pacman -S --needed --noconfirm adw-gtk-theme nwg-look qt5ct qt6ct capitaine-cursors dconf
+  sudo pacman -S --needed --noconfirm "${PKGS_THEMING[@]}"
 
   # Point qt5ct/qt6ct at the colour files Noctalia's Qt template writes.
   # Skipped for any of the two you've already configured.
@@ -855,11 +897,12 @@ EOF
 }
 
 # Step list: function | title shown on screen.
-STEP_FN=(step_update step_aur step_amd step_desktop step_zsh step_fonts step_files
+STEP_FN=(step_update step_packages step_aur step_amd step_desktop step_zsh step_fonts step_files
          step_helium step_apps step_gaming_vms step_keyring step_noctalia step_theming step_config
          step_greeter)
 STEP_TITLE=(
   "Updating Arch"
+  "Packages from the Arch repos"
   "AUR helper (paru)"
   "AMD GPU drivers + LACT"
   "Umbriel and desktop tools"

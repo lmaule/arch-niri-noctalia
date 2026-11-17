@@ -896,6 +896,7 @@ UI_ACTIVE=0
 STEP_PID=""
 SUDO_KEEPALIVE=""
 SUDO_DIR=""
+BUILD_CONF_DIR=""
 
 term_cols()  { tput cols 2>/dev/null || echo 80; }
 term_lines() { tput lines 2>/dev/null || echo 40; }
@@ -998,6 +999,7 @@ cleanup() {
   if [[ -n $STEP_PID ]]; then kill "$STEP_PID" 2>/dev/null; fi
   if [[ -n $SUDO_KEEPALIVE ]]; then kill "$SUDO_KEEPALIVE" 2>/dev/null; fi
   if [[ -n $SUDO_DIR ]]; then rm -rf "$SUDO_DIR"; fi   # deletes the saved password
+  if [[ -n $BUILD_CONF_DIR ]]; then rm -rf "$BUILD_CONF_DIR"; fi
   rm -f "$WARN_FILE"
 }
 trap cleanup EXIT
@@ -1132,6 +1134,29 @@ fi
 # Keep sudo's login fresh too, so most calls don't even need the password file.
 ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
 SUDO_KEEPALIVE=$!
+
+# Faster AUR builds for this install only. Arch's makepkg.conf is tuned for its
+# official packages: link-time optimisation (slow to link big C++ programs such
+# as Umbriel), debug builds plus an extra -debug package, and each package's
+# test suite. Here AUR packages are built without those, and the built package
+# isn't compressed because it's installed straight away. Your makepkg.conf is
+# not changed: this temporary config loads it (plus /etc/makepkg.conf.d/ and
+# your own ~/.config/pacman/makepkg.conf) and adds the overrides last, which is
+# where makepkg looks first. It's deleted when the installer exits.
+BUILD_CONF_DIR=$(mktemp -d)
+cat > "$BUILD_CONF_DIR/makepkg.conf" <<'EOF'
+source /etc/makepkg.conf
+for _conf in /etc/makepkg.conf.d/*.conf; do [[ -r $_conf ]] && source "$_conf"; done
+for _conf in "${XDG_CONFIG_HOME:-$HOME/.config}/pacman/makepkg.conf" "$HOME/.makepkg.conf"; do
+  if [[ -r $_conf ]]; then source "$_conf"; break; fi
+done
+unset _conf
+OPTIONS+=('!debug' '!lto')
+BUILDENV+=('!check')
+PKGEXT='.pkg.tar'
+EOF
+export MAKEPKG_CONF="$BUILD_CONF_DIR/makepkg.conf"
+export PKGEXT='.pkg.tar'
 
 # Start a fresh log (keeping the previous one as .old).
 if [[ -f $LOG ]]; then mv -f "$LOG" "$LOG.old"; fi

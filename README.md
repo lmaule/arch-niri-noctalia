@@ -81,6 +81,7 @@ After rebooting, choose the **Umbriel** session at the Noctalia login screen.
 
 ¹ From the AUR (`umbriel-git`, `helium-browser-bin`, `spotify`, `protonplus`, `claude-desktop`, `faugus-launcher`, `vm-curator-bin`).
 AUR packages are maintained by the community, not by the app developers. If no AUR helper is installed, `paru` is set up first.
+To save time, AUR packages are built without debug info, link-time optimisation or test suites (your own `makepkg.conf` isn't changed).
 
 ## What it configures
 

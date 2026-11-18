@@ -1,0 +1,31 @@
+#!/bin/bash
+# Stand-in pacman: remembers installs in $HOME/.stub-installed, so --needed
+# skips installed packages and only real installs count as transactions
+# (logged to $HOME/pacman-transactions.log). Changes nothing on the system.
+#   STUB_FAIL_BATCH=1    fail any -S with more than 30 packages (the one-go step)
+#   STUB_FAIL_PKG=name   fail the first -S that includes this package, once
+#   STUB_DELAY=seconds   pause per install, to slow runs down for screenshots
+db=$HOME/.stub-installed; touch "$db"; log=$HOME/pacman-transactions.log
+installed(){ grep -qxF "$1" "$db"; }
+case "$1" in
+  -Q)  [[ $2 == mesa ]] && { echo "mesa 1:26.2.7-1"; exit 0; }; installed "$2" && { echo "$2 1-1"; exit 0; }; exit 1 ;;
+  -Qq) installed "$2" ;;
+  -Si) [[ $2 == amdvlk || $2 == lib32-amdvlk ]] && exit 1; exit 0 ;;
+  -Sy) echo ":: Synchronizing package databases..." ;;
+  -Syu) shift; echo ":: Starting full system upgrade..."; for p in "$@"; do [[ $p == -* ]] || echo "$p" >> "$db"; done; echo "TX update" >> "$log" ;;
+  -U)  shift; for p in "$@"; do [[ $p == -* ]] && continue; n=$(basename "$p"); echo "${n%%.pkg.tar*}" >> "$db"; done; echo "TX -U $*" >> "$log" ;;
+  -S)
+    shift; pk=(); for a in "$@"; do [[ $a == -* ]] || pk+=("$a"); done
+    if [[ -n ${STUB_FAIL_BATCH:-} && ${#pk[@]} -gt 30 ]]; then echo "error: target not found: imaginary-package"; exit 1; fi
+    if [[ -n ${STUB_FAIL_PKG:-} && ! -f $HOME/.stub-failed ]] && printf '%s\n' "${pk[@]}" | grep -qxF "$STUB_FAIL_PKG"; then
+      touch "$HOME/.stub-failed"
+      echo "error: failed retrieving file '$STUB_FAIL_PKG-1-1-x86_64.pkg.tar.zst' from mirror : The requested URL returned error: 404"
+      echo "error: failed to commit transaction (failed to retrieve some files)"; exit 1
+    fi
+    todo=(); for p in "${pk[@]}"; do installed "$p" || todo+=("$p"); done
+    if [[ ${#todo[@]} -eq 0 ]]; then echo " there is nothing to do"; exit 0; fi
+    echo "resolving dependencies..."; printf '%s\n' "${todo[@]}" >> "$db"
+    echo "(${#todo[@]} packages) installing ${todo[*]:0:4} ..."; sleep "${STUB_DELAY:-0.05}"
+    echo "TX -S ${#todo[@]} pkgs: ${todo[*]:0:6}" >> "$log" ;;
+  -R*) shift; echo "removing $*" ;;
+esac

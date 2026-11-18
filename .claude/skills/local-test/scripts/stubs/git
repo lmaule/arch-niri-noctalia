@@ -1,0 +1,5 @@
+#!/bin/bash
+# Stand-in git: "clone" just creates the target folder; everything else is a no-op.
+echo "git $*"
+if [[ ${1:-} == clone ]]; then mkdir -p "${@: -1}"; fi
+exit 0

@@ -253,6 +253,20 @@ On every push, and every Monday, a [GitHub test](.github/workflows/install-test.
 Linux container with real packages, validates the Umbriel config with Umbriel, and checks the installed files and apps.
 A container can't boot or test the login screen and GPU, so the first install on real hardware is the final check.
 
+## Development
+
+The repo includes [Claude Code](https://claude.com/claude-code) skills in `.claude/skills/` for working on it:
+
+| Skill | What it does |
+|---|---|
+| `add-app` | Checklist for adding, swapping or removing an app: package lists, keybinds, README, CI |
+| `verify-arch-package` | Looks up exact package, command and desktop-file names in the official repos and the AUR (`scripts/pkginfo.py`) |
+| `local-test` | Runs the installer against stand-in commands, without installing anything (`scripts/run-local-test.sh`) |
+| `ci-check` | Waits for the GitHub install test and reports results and timings (`scripts/watch-ci.sh`, `scripts/ci-timings.py`) |
+| `readme-screenshots` | Re-takes the installer screenshots above (`scripts/take-screenshots.sh`) |
+
+The scripts also work on their own, without Claude Code.
+
 ## Credits
 
 - [Umbriel](https://github.com/noctalia-dev/umbriel) and [Noctalia](https://github.com/noctalia-dev/noctalia) by the

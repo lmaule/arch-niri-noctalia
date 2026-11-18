@@ -1,0 +1,2 @@
+#!/bin/bash
+[[ $1 == config && $2 == validate ]] && { echo "umbriel: config OK (stub)"; exit 0; }; exit 0

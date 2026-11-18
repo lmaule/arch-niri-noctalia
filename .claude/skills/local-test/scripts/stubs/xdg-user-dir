@@ -1,0 +1,3 @@
+#!/bin/bash
+case $1 in DOCUMENTS) d=Documents;; DOWNLOAD) d=Downloads;; MUSIC) d=Music;; PICTURES) d=Pictures;; VIDEOS) d=Videos;; *) echo "$HOME"; exit;; esac
+mkdir -p "$HOME/$d"; echo "$HOME/$d"

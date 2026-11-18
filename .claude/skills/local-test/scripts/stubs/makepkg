@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "==> Making package: paru-bin"; sleep 0.3
+sudo pacman -U --noconfirm paru-bin.pkg.tar.zst || exit 1
+cp "$(dirname "$0")/paru.real" "$(dirname "$0")/paru"; chmod +x "$(dirname "$0")/paru"

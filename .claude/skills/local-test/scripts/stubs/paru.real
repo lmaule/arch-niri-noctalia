@@ -1,0 +1,4 @@
+#!/bin/bash
+case "$1" in -Si) exit 0 ;; esac
+echo "==> Making package: ${@: -1}"; sleep ${STUB_DELAY:-0.1}
+sudo pacman -U --noconfirm "${@: -1}.pkg.tar" || exit 1
